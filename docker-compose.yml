@@ -1,0 +1,59 @@
+services:
+  # 前端服务
+  frontend:
+    build: ./frontend
+    ports:
+      - "18080:80"
+    depends_on:
+      - backend
+    networks:
+      - exam-network
+
+  # 后端服务
+  backend:
+    build: ./backend
+    ports:
+      - "13000:3000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=exam_db
+      - DB_USER=exam_user
+      - DB_PASSWORD=exam_pass123
+      - REDIS_HOST=redis
+    depends_on:
+      - db
+      - redis
+    networks:
+      - exam-network
+
+  # 数据库
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=exam_db
+      - POSTGRES_USER=exam_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-exam_pass123}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "15432:5432"
+    volumes:
+      - exam-prep-system_db_data:/var/lib/postgresql/data
+    networks:
+      - exam-network
+
+  # Redis缓存
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "16379:6379"
+    networks:
+      - exam-network
+
+volumes:
+  exam-prep-system_db_data:
+    external: true
+
+networks:
+  exam-network:
+    driver: bridge
