@@ -39,7 +39,21 @@
       "Bash(git config:*)",
       "Bash(git branch:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(ssh-keygen:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(ssh:*)",
+      "Bash(~/create-github-repo.sh:*)",
+      "Bash(__NEW_LINE_a96f6bf36eeeae56__ chmod +x ~/create-github-repo.sh)",
+      "Bash(export:*)",
+      "Bash(echo:*)",
+      "Bash(~/.bashrc)",
+      "Bash(~/.local/bin/gh auth:*)",
+      "Bash(~/test-all-pages.sh)",
+      "Bash(~/test-all-pages-fixed.sh:*)"
     ]
   }
 }
