@@ -26,6 +26,11 @@ logs/
 .env.test.local
 .env.production.local
 
+# Claude配置 - 包含敏感信息
+.claude/mcp.json
+.claude/settings.local.json
+.claude/QUICK_REF.md
+
 # 操作系统文件
 .DS_Store
 .DS_Store?

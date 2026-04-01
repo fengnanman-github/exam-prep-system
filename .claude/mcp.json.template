@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "database": {
+      "command": "docker",
+      "args": ["exec", "-it", "exam-prep-system-package-20260330-db-1", "psql", "-U", "exam_user", "-d", "exam_db"],
+      "env": {
+        "PGPASSWORD": "YOUR_DB_PASSWORD",
+        "PGDATABASE": "exam_db"
+      }
+    }
+  }
+}
