@@ -99,6 +99,8 @@ export default {
 
 <style scoped>
 .wrong-view {
+  max-width: 1200px;
+  margin: 0 auto;
   background: white;
   padding: 2rem;
   border-radius: 10px;
