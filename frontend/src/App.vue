@@ -1,47 +1,109 @@
 <template>
   <div id="app">
+    <!-- 优化的 Header -->
     <header class="header">
       <div class="header-content">
-        <div class="header-left">
-          <h1>🔐 密评备考系统</h1>
-          <p>商用密码应用安全性评估从业人员考核备考平台</p>
+        <!-- Logo 和标题 -->
+        <div class="header-brand">
+          <div class="logo">🔐</div>
+          <div class="brand-text">
+            <h1 class="brand-title">密评备考系统</h1>
+            <p class="brand-subtitle">商用密码应用安全性评估考核</p>
+          </div>
         </div>
-        <div class="header-right">
+
+        <!-- 右侧操作区 -->
+        <div class="header-actions">
           <!-- 已登录用户信息 -->
-          <div v-if="authStore.isAuthenticated" class="user-info">
-            <div class="user-details">
-              <span class="user-name">👤 {{ authStore.user?.display_name || authStore.user?.username }}</span>
-              <span v-if="authStore.isAdmin()" class="admin-badge">管理员</span>
+          <div v-if="authStore.isAuthenticated" class="user-section">
+            <!-- 用户下拉菜单 -->
+            <div class="user-dropdown" @click="toggleUserMenu">
+              <div class="user-avatar">
+                <span class="avatar-icon">{{ (authStore.user?.display_name || authStore.user?.username || 'U').charAt(0).toUpperCase() }}</span>
+              </div>
+              <div class="user-info-text">
+                <span class="user-display-name">{{ authStore.user?.display_name || authStore.user?.username }}</span>
+                <span v-if="authStore.isAdmin()" class="user-role">管理员</span>
+                <span v-else class="user-role">学员</span>
+              </div>
+              <span class="dropdown-arrow" :class="{ active: showUserMenu }">▼</span>
             </div>
-            <div class="user-menu">
-              <button @click="openChangePasswordModal" class="header-btn">🔑 修改密码</button>
-              <button @click="handleLogout" class="header-btn logout">🚪 登出</button>
+
+            <!-- 用户菜单（展开状态） -->
+            <div v-if="showUserMenu" class="user-menu-popup" @click.stop>
+              <div class="menu-header">
+                <div class="menu-avatar">
+                  <span>{{ (authStore.user?.display_name || authStore.user?.username || 'U').charAt(0).toUpperCase() }}</span>
+                </div>
+                <div class="menu-user-info">
+                  <div class="menu-user-name">{{ authStore.user?.display_name || authStore.user?.username }}</div>
+                  <div class="menu-user-role">{{ authStore.isAdmin() ? '管理员' : '学员' }}</div>
+                </div>
+              </div>
+              <div class="menu-divider"></div>
+              <button @click="openChangePasswordModal" class="menu-item">
+                <span class="menu-icon">🔑</span>
+                <span>修改密码</span>
+              </button>
+              <button @click="handleLogout" class="menu-item danger">
+                <span class="menu-icon">🚪</span>
+                <span>退出登录</span>
+              </button>
             </div>
           </div>
+
           <!-- 未登录显示登录按钮 -->
-          <button v-else @click="openLoginModal" class="btn-login">🔓 登录 / 注册</button>
+          <button v-else @click="openLoginModal" class="btn-login">
+            <span class="btn-icon">🔓</span>
+            <span>登录</span>
+          </button>
         </div>
       </div>
     </header>
 
+    <!-- 导航栏 -->
     <nav class="nav">
-      <button @click="currentView = 'home'" :class="{ active: currentView === 'home' }" class="nav-btn">🏠 首页</button>
-      <button @click="currentView = 'practice'" :class="{ active: currentView === 'practice' }" class="nav-btn">🎯 练习</button>
-      <button @click="currentView = 'category-practice'" :class="{ active: currentView === 'category-practice' }" class="nav-btn">📂 分类练习</button>
-      <button @click="currentView = 'smart-review'" :class="{ active: currentView === 'smart-review' }" class="nav-btn">🧠 智能复习</button>
-      <button @click="currentView = 'wrong-answers'" :class="{ active: currentView === 'wrong-answers' }" class="nav-btn">📚 错题本</button>
-      <button @click="currentView = 'progress'" :class="{ active: currentView === 'progress' }" class="nav-btn">📊 学习进度</button>
-      <!-- 模拟考试移到最后 -->
-      <button @click="currentView = 'mock-exam'" :class="{ active: currentView === 'mock-exam' }" class="nav-btn">📝 模拟考试</button>
-      <!-- 管理员功能 -->
-      <button
-        v-if="authStore.isAdmin()"
-        @click="currentView = 'question-admin'"
-        :class="{ active: currentView === 'question-admin' }"
-        class="nav-btn admin-nav"
-      >
-        🔧 题目管理
-      </button>
+      <div class="nav-container">
+        <div class="nav-menu">
+          <button @click="currentView = 'home'" :class="{ active: currentView === 'home' }" class="nav-btn">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">首页</span>
+          </button>
+          <button @click="currentView = 'practice'" :class="{ active: currentView === 'practice' }" class="nav-btn">
+            <span class="nav-icon">🎯</span>
+            <span class="nav-text">练习</span>
+          </button>
+          <button @click="currentView = 'category-practice'" :class="{ active: currentView === 'category-practice' }" class="nav-btn">
+            <span class="nav-icon">📂</span>
+            <span class="nav-text">分类</span>
+          </button>
+          <button @click="currentView = 'smart-review'" :class="{ active: currentView === 'smart-review' }" class="nav-btn">
+            <span class="nav-icon">🧠</span>
+            <span class="nav-text">复习</span>
+          </button>
+          <button @click="currentView = 'wrong-answers'" :class="{ active: currentView === 'wrong-answers' }" class="nav-btn">
+            <span class="nav-icon">📚</span>
+            <span class="nav-text">错题</span>
+          </button>
+          <button @click="currentView = 'progress'" :class="{ active: currentView === 'progress' }" class="nav-btn">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">进度</span>
+          </button>
+          <button @click="currentView = 'mock-exam'" :class="{ active: currentView === 'mock-exam' }" class="nav-btn">
+            <span class="nav-icon">📝</span>
+            <span class="nav-text">考试</span>
+          </button>
+          <button
+            v-if="authStore.isAdmin()"
+            @click="currentView = 'question-admin'"
+            :class="{ active: currentView === 'question-admin' }"
+            class="nav-btn admin-btn"
+          >
+            <span class="nav-icon">🔧</span>
+            <span class="nav-text">管理</span>
+          </button>
+        </div>
+      </div>
     </nav>
 
     <main class="main" id="main-content">
@@ -357,7 +419,8 @@ export default {
       categories: [],
       selectedCategory: null,
       authStore,
-      showBackToTop: false
+      showBackToTop: false,
+      showUserMenu: false
     }
   },
   computed: {
@@ -379,6 +442,10 @@ export default {
     window.addEventListener('scroll', this.handleScroll)
   },
   methods: {
+    toggleUserMenu() {
+      this.showUserMenu = !this.showUserMenu
+    },
+
     async loadStats() {
       try {
         const response = await axios.get(`${API_BASE}/stats`)
@@ -548,11 +615,15 @@ body {
   flex-direction: column;
 }
 
+/* ==================== Header 样式 ==================== */
 .header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .header-content {
@@ -561,90 +632,234 @@ body {
   align-items: center;
   max-width: 1400px;
   margin: 0 auto;
+  gap: 2rem;
 }
 
-.header-left h1 {
-  font-size: 2rem;
-  margin-bottom: 0.3rem;
-}
-
-.header-left p {
-  font-size: 1rem;
-  opacity: 0.9;
-}
-
-.header-right {
+/* Logo 和品牌 */
+.header-brand {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex: 0 0 auto;
 }
 
-/* 用户信息样式 */
-.user-info {
+.logo {
+  font-size: 2.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.brand-text {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  align-items: flex-end;
+  gap: 0.2rem;
 }
 
-.user-details {
+.brand-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.brand-subtitle {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* 右侧操作区 */
+.header-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
+  flex: 0 0 auto;
 }
 
-.user-name {
+/* 用户区域 */
+.user-section {
+  position: relative;
+}
+
+.user-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-dropdown:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF9800, #F57C00);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
   font-size: 1rem;
-  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.admin-badge {
-  background: #FF9800;
+.avatar-icon {
   color: white;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+}
+
+.user-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.user-display-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-role {
   font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.dropdown-arrow {
+  font-size: 0.7rem;
+  transition: transform 0.3s ease;
+  opacity: 0.7;
+}
+
+.dropdown-arrow.active {
+  transform: rotate(180deg);
+}
+
+/* 用户菜单弹窗 */
+.user-menu-popup {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 240px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: slideDown 0.3s ease;
+  z-index: 1000;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.menu-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.menu-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.menu-user-name {
+  font-size: 1rem;
   font-weight: 600;
 }
 
-.user-menu {
+.menu-user-role {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0;
+}
+
+.menu-item {
   display: flex;
-  gap: 0.5rem;
-}
-
-.header-btn {
-  padding: 0.4rem 0.8rem;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  background: none;
+  border: none;
+  text-align: left;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
+  color: #374151;
+  font-size: 0.95rem;
 }
 
-.header-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
+.menu-item:hover {
+  background: #f3f4f6;
 }
 
-.header-btn.logout {
-  background: rgba(244, 67, 54, 0.2);
-  border-color: rgba(244, 67, 54, 0.4);
+.menu-item.danger {
+  color: #dc2626;
 }
 
-.header-btn.logout:hover {
-  background: rgba(244, 67, 54, 0.3);
+.menu-item.danger:hover {
+  background: #fef2f2;
 }
 
-/* 登录按钮样式 */
+.menu-icon {
+  font-size: 1.1rem;
+}
+
+/* 登录按钮 */
 .btn-login {
-  padding: 0.6rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
   background: white;
   color: #667eea;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
@@ -656,35 +871,135 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+/* ==================== 导航栏样式 ==================== */
 .nav {
   background: white;
-  padding: 1rem 2rem;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 72px;
+  z-index: 99;
+}
+
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.nav-menu {
   display: flex;
-  justify-content: center;
+  align-items: center;
   gap: 0.5rem;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  flex-wrap: wrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-menu::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-btn {
-  padding: 0.6rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
   border: none;
-  background: #f8f9fa;
-  color: #495057;
+  background: transparent;
+  color: #6b7280;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s;
-  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .nav-btn:hover {
-  background: #e9ecef;
-  transform: translateY(-1px);
+  background: #f3f4f6;
+  color: #374151;
 }
 
 .nav-btn.active {
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.nav-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.nav-text {
+  line-height: 1;
+}
+
+.admin-btn {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+  color: white;
+}
+
+.admin-btn:hover {
+  background: linear-gradient(135deg, #F57C00 0%, #E65100 100%);
+  color: white;
+}
+
+/* 响应式样式 */
+@media (max-width: 768px) {
+  .header {
+    padding: 0.75rem 1rem;
+  }
+
+  .header-content {
+    gap: 1rem;
+  }
+
+  .brand-title {
+    font-size: 1.1rem;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .logo {
+    font-size: 1.8rem;
+  }
+
+  .user-display-name {
+    max-width: 80px;
+  }
+
+  .nav-container {
+    padding: 0 1rem;
+  }
+
+  .nav-text {
+    display: none;
+  }
+
+  .nav-btn {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-info-text {
+    display: none;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+
+  .btn-login {
+    padding: 0.5rem 1rem;
+  }
+
+  .btn-login .btn-text {
+    display: none;
+  }
 }
 
 .main {
