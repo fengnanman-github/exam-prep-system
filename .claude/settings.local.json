@@ -1,4 +1,10 @@
 {
+  "projectContext": {
+    "frontendDirectory": "frontend",
+    "backendDirectory": "backend",
+    "packageJsonPath": "frontend/package.json",
+    "description": "密评备考系统 - Vue.js 前端 + Node.js 后端"
+  },
   "permissions": {
     "allow": [
       "Bash(docker:*)",
