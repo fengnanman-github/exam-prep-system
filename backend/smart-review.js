@@ -31,7 +31,8 @@ module.exports = (pool) => {
 
             // 获取当前错题记录
             const getWrongQuery = `
-                SELECT * FROM wrong_answers
+                SELECT ease_factor, review_count, review_interval, mastery_level
+                FROM wrong_answers
                 WHERE user_id = $1 AND question_id = $2
             `;
             const wrongResult = await pool.query(getWrongQuery, [user_id, question_id]);
@@ -39,14 +40,14 @@ module.exports = (pool) => {
             if (wrongResult.rows.length === 0) {
                 // 如果不存在记录，创建新记录
                 const insertQuery = `
-                    INSERT INTO wrong_answers (user_id, question_id, wrong_count, ease_factor, review_interval)
-                    VALUES ($1, $2, 1, 2.5, 1)
+                    INSERT INTO wrong_answers (user_id, question_id, wrong_count, ease_factor, review_interval, review_count, next_review_time, mastery_level)
+                    VALUES ($1, $2, 1, 2.5, 1, 0, CURRENT_TIMESTAMP + INTERVAL '1 day', 0)
                     RETURNING *
                 `;
                 await pool.query(insertQuery, [user_id, question_id]);
             }
 
-            const wrong = wrongResult.rows[0] || { ease_factor: 2.5, review_count: 0 };
+            const wrong = wrongResult.rows[0] || { ease_factor: 2.5, review_count: 0, review_interval: 1 };
 
             // 计算新的间隔和难度因子
             const newEaseFactor = Math.max(1.3, wrong.ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
@@ -57,7 +58,9 @@ module.exports = (pool) => {
             } else if (wrong.review_count === 1) {
                 newInterval = 6;
             } else {
-                newInterval = Math.round(wrong.review_interval * newEaseFactor);
+                // 确保review_interval是有效的数字
+                const currentInterval = wrong.review_interval || 1;
+                newInterval = Math.round(currentInterval * newEaseFactor);
             }
 
             // 更新错题记录
@@ -67,8 +70,8 @@ module.exports = (pool) => {
                     ease_factor = $1,
                     review_interval = $2,
                     review_count = review_count + 1,
-                    next_review_time = CURRENT_TIMESTAMP + INTERVAL '${newInterval} days',
-                    mastery_level = LEAST(1.0, mastery_level + ($5 - 2.5) * 0.1),
+                    next_review_time = CURRENT_TIMESTAMP + (INTERVAL '1 day' * $2::integer),
+                    mastery_level = LEAST(1.0, COALESCE(mastery_level, 0) + ($5 - 2.5) * 0.1),
                     updated_at = CURRENT_TIMESTAMP
                 WHERE user_id = $3 AND question_id = $4
                 RETURNING *
@@ -117,6 +120,7 @@ module.exports = (pool) => {
             const query = `
                 SELECT
                     wa.*,
+                    q.id as question_id,
                     q.question_no,
                     q.question_type,
                     q.category,
@@ -154,8 +158,8 @@ module.exports = (pool) => {
                     COUNT(*) as total_review_questions,
                     COUNT(*) FILTER (WHERE next_review_time <= CURRENT_TIMESTAMP) as due_today,
                     COUNT(*) FILTER (WHERE next_review_time > CURRENT_TIMESTAMP) as pending_review,
-                    ROUND(AVG(GREATEST(0, mastery_level)) * 100, 2) as average_mastery,
-                    COUNT(*) FILTER (GREATEST(0, mastery_level) >= 0.8) as mastered_count
+                    ROUND(AVG(COALESCE(mastery_level, 0)) * 100, 2) as average_mastery,
+                    COUNT(*) FILTER (WHERE COALESCE(mastery_level, 0) >= 0.8) as mastered_count
                 FROM wrong_answers
                 WHERE user_id = $1
             `;
@@ -267,6 +271,7 @@ module.exports = (pool) => {
             const query = `
                 SELECT
                     wa.*,
+                    q.id as question_id,
                     q.question_no,
                     q.question_type,
                     q.category,

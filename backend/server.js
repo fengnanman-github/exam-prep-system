@@ -419,6 +419,363 @@ app.use('/api/v2/admin', authenticateToken, requireAdmin, questionAdminApi(pool)
 // 不确定题目API路由
 app.use('/api/v2/uncertain', uncertainQuestionsApi(pool));
 
+// 文档复习API路由
+const documentReviewApi = require('./document-review-api');
+app.use('/api/v2/documents', documentReviewApi(pool));
+
+// 书名号标注API路由
+const bookTitleLabeler = require('./book-title-labeler');
+app.use('/api/v2/documents', bookTitleLabeler(pool));
+
+// 统一统计API路由
+const unifiedStatsApi = require('./unified-stats-api');
+app.use('/api/v2/stats', unifiedStatsApi(pool));
+
+// 智能推荐API路由
+const smartRecommendationApi = require('./smart-recommendation-api');
+app.use('/api/v2/smart', smartRecommendationApi(pool));
+
+// ==================== 考试分类标注（临时端点）====================
+// 考试分类定义
+const EXAM_CATEGORIES = {
+  '密码政策法规': {
+    weight: 0.10,
+    keywords: ['密码法', '商用密码管理条例', '法律法规', '政策', '规定'],
+    color: '#ef4444',
+    icon: '⚖️'
+  },
+  '密码技术基础及相关标准': {
+    weight: 0.20,
+    keywords: ['算法', '协议', 'SM2', 'SM3', 'SM4', 'SM9', '密码算法', '技术基础'],
+    color: '#3b82f6',
+    icon: '🔐'
+  },
+  '密码产品原理、应用及相关标准': {
+    weight: 0.20,
+    keywords: ['产品', '应用', '模块', '芯片', '密码机', 'SSL', 'VPN'],
+    color: '#8b5cf6',
+    icon: '🛡️'
+  },
+  '密评理论、技术及相关标准': {
+    weight: 0.20,
+    keywords: ['密评', '评估', '标准', '规范', '指引', '技术要求', 'GB/T'],
+    color: '#f59e0b',
+    icon: '📋'
+  },
+  '密码应用与安全性评估实务综合': {
+    weight: 0.30,
+    keywords: ['应用', '实务', '案例', '实施', '部署', '系统集成'],
+    color: '#10b981',
+    icon: '💼'
+  }
+};
+
+// 推断考试分类
+function inferExamCategory(text, lawCategory, techCategory) {
+  if (!text) return '密码应用与安全性评估实务综合';
+
+  const lowerText = text.toLowerCase();
+
+  for (const [category, config] of Object.entries(EXAM_CATEGORIES)) {
+    for (const keyword of config.keywords) {
+      if (lowerText.includes(keyword.toLowerCase())) {
+        return category;
+      }
+    }
+  }
+
+  // 根据现有分类推断
+  if (lawCategory) {
+    if (lawCategory.includes('密码法') || lawCategory.includes('条例')) {
+      return '密码政策法规';
+    }
+  }
+
+  return '密码应用与安全性评估实务综合';
+}
+
+// 标注考试分类API（临时开放，无需认证）
+app.post('/api/v2/label-exam-category', async (req, res) => {
+  try {
+    // 添加字段
+    await pool.query(`
+      ALTER TABLE questions
+      ADD COLUMN IF NOT EXISTS exam_category VARCHAR(100)
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_questions_exam_category
+      ON questions(exam_category)
+    `);
+
+    // 获取未标注的题目
+    const result = await pool.query(`
+      SELECT id, question_text, law_category, tech_category
+      FROM questions
+      WHERE exam_category IS NULL
+      LIMIT 1000
+    `);
+
+    const questions = result.rows;
+    const stats = {};
+
+    for (const cat of Object.keys(EXAM_CATEGORIES)) {
+      stats[cat] = 0;
+    }
+
+    // 标注
+    for (const question of questions) {
+      const category = inferExamCategory(
+        question.question_text,
+        question.law_category,
+        question.tech_category
+      );
+
+      await pool.query(`
+        UPDATE questions
+        SET exam_category = $1
+        WHERE id = $2
+      `, [category, question.id]);
+
+      stats[category]++;
+    }
+
+    res.json({
+      success: true,
+      message: `成功标注 ${questions.length} 道题目`,
+      stats
+    });
+
+  } catch (error) {
+    console.error('标注失败:', error);
+    res.status(500).json({ error: '标注失败' });
+  }
+});
+
+// 获取考试分类统计
+app.get('/api/v2/exam-categories/stats', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        exam_category,
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE question_type = '单项选择题') as single_choice,
+        COUNT(*) FILTER (WHERE question_type = '多项选择题') as multi_choice,
+        COUNT(*) FILTER (WHERE question_type = '判断题') as judgment
+      FROM questions
+      WHERE exam_category IS NOT NULL
+      GROUP BY exam_category
+      ORDER BY exam_category
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('获取统计失败:', error);
+    res.status(500).json({ error: '获取统计失败' });
+  }
+});
+
+// ==================== 智能推荐API ====================
+
+// 考试分类配置
+const SMART_EXAM_CATEGORIES = {
+  '密码政策法规': { weight: 0.10, color: '#ef4444', icon: '⚖️' },
+  '密码技术基础及相关标准': { weight: 0.20, color: '#3b82f6', icon: '🔐' },
+  '密码产品原理、应用及相关标准': { weight: 0.20, color: '#8b5cf6', icon: '🛡️' },
+  '密评理论、技术及相关标准': { weight: 0.20, color: '#f59e0b', icon: '📋' },
+  '密码应用与安全性评估实务综合': { weight: 0.30, color: '#10b981', icon: '💼' }
+};
+
+/**
+ * GET /api/v2/smart/priority-stats/:userId
+ * 获取优先级统计
+ */
+app.get('/api/v2/smart/priority-stats/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await pool.query(`
+      SELECT
+        q.law_category as category,
+        COUNT(*) as total,
+        COUNT(DISTINCT ph.question_id) as practiced,
+        COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) as correct
+      FROM questions q
+      LEFT JOIN (
+        SELECT DISTINCT question_id, is_correct
+        FROM practice_history
+        WHERE user_id = $1
+      ) ph ON q.id = ph.question_id
+      WHERE q.law_category IS NOT NULL
+      GROUP BY q.law_category
+    `, [userId]);
+
+    const categoryStats = result.rows;
+
+    // 计算优先级
+    const priorities = categoryStats.map(stat => {
+      const total = parseInt(stat.total) || 0;
+      const practiced = parseInt(stat.practiced) || 0;
+      const correct = parseInt(stat.correct) || 0;
+
+      // 掌握程度
+      const practice_ratio = total > 0 ? (practiced / total) : 0;
+      const accuracy = practiced > 0 ? (correct / practiced) : 0;
+      const mastery_level = (practice_ratio * 0.6) + (accuracy * 0.4);
+
+      // 匹配考试分类
+      let examCategory = '密码应用与安全性评估实务综合';
+      for (const [key, config] of Object.entries(SMART_EXAM_CATEGORIES)) {
+        if (stat.category.includes('密码法') || stat.category.includes('条例')) {
+          if (key === '密码政策法规') examCategory = key;
+        } else if (stat.category.includes('算法') || stat.category.includes('SM')) {
+          if (key === '密码技术基础及相关标准') examCategory = key;
+        } else if (stat.category.includes('产品') || stat.category.includes('应用')) {
+          if (key === '密码产品原理、应用及相关标准') examCategory = key;
+        } else if (stat.category.includes('密评') || stat.category.includes('评估')) {
+          if (key === '密评理论、技术及相关标准') examCategory = key;
+        }
+      }
+
+      const config = SMART_EXAM_CATEGORIES[examCategory];
+      const base_priority = config.weight * (1 - mastery_level);
+      const priority_score = Math.round(base_priority * 1000) / 1000;
+
+      let level = 'low';
+      if (priority_score >= 0.15) level = 'critical';
+      else if (priority_score >= 0.10) level = 'high';
+      else if (priority_score >= 0.05) level = 'medium';
+
+      return {
+        category: stat.category,
+        exam_category: examCategory,
+        total,
+        practiced,
+        correct,
+        practice_ratio: Math.round(practice_ratio * 100),
+        accuracy: Math.round(accuracy * 100),
+        mastery_level: Math.round(mastery_level * 100),
+        priority_score,
+        level,
+        exam_weight: config.weight,
+        icon: config.icon,
+        color: config.color
+      };
+    });
+
+    // 按优先级排序
+    priorities.sort((a, b) => b.priority_score - a.priority_score);
+
+    res.json({
+      success: true,
+      priorities,
+      total_categories: priorities.length,
+      high_priority_count: priorities.filter(p => p.level === 'high' || p.level === 'critical').length
+    });
+
+  } catch (error) {
+    console.error('获取优先级统计失败:', error);
+    res.status(500).json({ error: '获取优先级统计失败' });
+  }
+});
+
+/**
+ * GET /api/v2/smart/recommendations/:userId
+ * 获取今日推荐
+ */
+app.get('/api/v2/smart/recommendations/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { time_available = 30 } = req.query;
+
+    // 获取优先级统计
+    const priorityResult = await pool.query(`
+      SELECT
+        q.law_category as category,
+        COUNT(*) as total,
+        COUNT(DISTINCT ph.question_id) as practiced,
+        COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) as correct
+      FROM questions q
+      LEFT JOIN (
+        SELECT DISTINCT question_id, is_correct
+        FROM practice_history
+        WHERE user_id = $1
+      ) ph ON q.id = ph.question_id
+      WHERE q.law_category IS NOT NULL
+      GROUP BY q.law_category
+    `, [userId]);
+
+    const categoryStats = priorityResult.rows;
+
+    // 简化优先级计算
+    const priorities = categoryStats.map(stat => {
+      const total = parseInt(stat.total) || 0;
+      const practiced = parseInt(stat.practiced) || 0;
+      const practice_ratio = total > 0 ? practiced / total : 0;
+
+      let examCategory = '密码应用与安全性评估实务综合';
+      let examWeight = 0.30;
+      let icon = '💼';
+
+      if (stat.category.includes('密码法') || stat.category.includes('条例')) {
+        examCategory = '密码政策法规';
+        examWeight = 0.10;
+        icon = '⚖️';
+      } else if (stat.category.includes('算法') || stat.category.includes('SM')) {
+        examCategory = '密码技术基础及相关标准';
+        examWeight = 0.20;
+        icon = '🔐';
+      } else if (stat.category.includes('密评') || stat.category.includes('评估')) {
+        examCategory = '密评理论、技术及相关标准';
+        examWeight = 0.20;
+        icon = '📋';
+      }
+
+      const priority_score = examWeight * (1 - practice_ratio);
+
+      return {
+        category: stat.category,
+        exam_category: examCategory,
+        exam_weight: examWeight,
+        priority_score,
+        icon,
+        total,
+        practiced,
+        practice_ratio: Math.round(practice_ratio * 100)
+      };
+    });
+
+    priorities.sort((a, b) => b.priority_score - a.priority_score);
+
+    // 今日推荐
+    const totalQuestions = Math.floor(parseInt(time_available) / 0.6);
+    const topCategory = priorities[0];
+
+    res.json({
+      success: true,
+      user_id: userId,
+      time_available: parseInt(time_available),
+      estimated_questions: totalQuestions,
+      focus_area: topCategory ? {
+        category: topCategory.category,
+        exam_category: topCategory.exam_category,
+        reason: `占考试${topCategory.exam_weight * 100}%，当前练习度${topCategory.practice_ratio}%`
+      } : null,
+      top_recommendations: priorities.slice(0, 3).map(p => ({
+        category: p.category,
+        exam_category: p.exam_category,
+        priority_score: Math.round(p.priority_score * 1000) / 1000,
+        recommended_count: Math.ceil(totalQuestions / 3),
+        reason: `练习度${p.practice_ratio}%`
+      }))
+    });
+
+  } catch (error) {
+    console.error('获取推荐失败:', error);
+    res.status(500).json({ error: '获取推荐失败' });
+  }
+});
+
 // 404处理
 app.use((req, res) => {
     res.status(404).json({

@@ -82,19 +82,34 @@ module.exports = (pool) => {
     // 获取法律法规大类列表
     router.get('/categories/law', async (req, res) => {
         try {
+            const userId = req.query.user_id || 'exam_user_001';
+
+            // 使用与统一统计API相同的去重逻辑
             const query = `
                 SELECT
-                    law_category,
+                    q.law_category,
                     COUNT(*) as total_count,
-                    COUNT(*) FILTER (WHERE difficulty = 'easy') as easy_count,
-                    COUNT(*) FILTER (WHERE difficulty = 'medium') as medium_count,
-                    COUNT(*) FILTER (WHERE difficulty = 'hard') as hard_count
-                FROM questions
-                WHERE law_category IS NOT NULL
-                GROUP BY law_category
+                    COUNT(*) FILTER (WHERE q.difficulty = 'easy') as easy_count,
+                    COUNT(*) FILTER (WHERE q.difficulty = 'medium') as medium_count,
+                    COUNT(*) FILTER (WHERE q.difficulty = 'hard') as hard_count,
+                    COUNT(DISTINCT ph.question_id) as practiced_count,
+                    COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) as correct_count,
+                    ROUND(
+                        100.0 * COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) /
+                        NULLIF(COUNT(DISTINCT ph.question_id), 0),
+                        1
+                    ) as accuracy_rate
+                FROM questions q
+                LEFT JOIN (
+                    SELECT DISTINCT question_id, is_correct
+                    FROM practice_history
+                    WHERE user_id = $1
+                ) ph ON q.id = ph.question_id
+                WHERE q.law_category IS NOT NULL
+                GROUP BY q.law_category
                 ORDER BY total_count DESC
             `;
-            const result = await pool.query(query);
+            const result = await pool.query(query, [userId]);
             res.json(result.rows);
         } catch (error) {
             console.error('获取法律法规分类失败:', error);
@@ -557,19 +572,25 @@ module.exports = (pool) => {
         try {
             const { userId } = req.params;
 
+            // 使用与统一统计API相同的去重逻辑
             const query = `
                 SELECT
                     q.law_category,
                     q.tech_category,
                     COUNT(*) as total_count,
                     COUNT(DISTINCT ph.question_id) as practiced_count,
-                    COUNT(*) FILTER (WHERE ph.is_correct = true) as correct_count,
+                    COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) as correct_count,
                     ROUND(
-                        100.0 * COUNT(*) FILTER (WHERE ph.is_correct = true) / NULLIF(COUNT(DISTINCT ph.question_id), 0),
+                        100.0 * COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) /
+                        NULLIF(COUNT(DISTINCT ph.question_id), 0),
                         2
                     ) as accuracy_rate
                 FROM questions q
-                LEFT JOIN practice_history ph ON q.id = ph.question_id AND ph.user_id = $1
+                LEFT JOIN (
+                    SELECT DISTINCT question_id, is_correct
+                    FROM practice_history
+                    WHERE user_id = $1
+                ) ph ON q.id = ph.question_id
                 WHERE q.law_category IS NOT NULL AND q.tech_category IS NOT NULL
                 GROUP BY q.law_category, q.tech_category
                 ORDER BY q.law_category, q.tech_category
@@ -614,18 +635,24 @@ module.exports = (pool) => {
         try {
             const { userId } = req.params;
 
+            // 使用与统一统计API相同的去重逻辑
             const query = `
                 SELECT
                     q.law_category,
                     COUNT(*) as total_count,
                     COUNT(DISTINCT ph.question_id) as practiced_count,
-                    COUNT(*) FILTER (WHERE ph.is_correct = true) as correct_count,
+                    COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) as correct_count,
                     ROUND(
-                        100.0 * COUNT(*) FILTER (WHERE ph.is_correct = true) / NULLIF(COUNT(DISTINCT ph.question_id), 0),
+                        100.0 * COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) /
+                        NULLIF(COUNT(DISTINCT ph.question_id), 0),
                         2
                     ) as accuracy_rate
                 FROM questions q
-                LEFT JOIN practice_history ph ON q.id = ph.question_id AND ph.user_id = $1
+                LEFT JOIN (
+                    SELECT DISTINCT question_id, is_correct
+                    FROM practice_history
+                    WHERE user_id = $1
+                ) ph ON q.id = ph.question_id
                 WHERE q.law_category IS NOT NULL
                 GROUP BY q.law_category
                 ORDER BY law_category
@@ -643,18 +670,24 @@ module.exports = (pool) => {
         try {
             const { userId } = req.params;
 
+            // 使用与统一统计API相同的去重逻辑
             const query = `
                 SELECT
                     q.tech_category,
                     COUNT(*) as total_count,
                     COUNT(DISTINCT ph.question_id) as practiced_count,
-                    COUNT(*) FILTER (WHERE ph.is_correct = true) as correct_count,
+                    COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) as correct_count,
                     ROUND(
-                        100.0 * COUNT(*) FILTER (WHERE ph.is_correct = true) / NULLIF(COUNT(DISTINCT ph.question_id), 0),
+                        100.0 * COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) /
+                        NULLIF(COUNT(DISTINCT ph.question_id), 0),
                         2
                     ) as accuracy_rate
                 FROM questions q
-                LEFT JOIN practice_history ph ON q.id = ph.question_id AND ph.user_id = $1
+                LEFT JOIN (
+                    SELECT DISTINCT question_id, is_correct
+                    FROM practice_history
+                    WHERE user_id = $1
+                ) ph ON q.id = ph.question_id
                 WHERE q.tech_category IS NOT NULL
                 GROUP BY q.tech_category
                 ORDER BY tech_category

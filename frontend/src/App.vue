@@ -77,6 +77,10 @@
             <span class="nav-icon">📂</span>
             <span class="nav-text">分类</span>
           </button>
+          <button @click="currentView = 'document-review'" :class="{ active: currentView === 'document-review' }" class="nav-btn">
+            <span class="nav-icon">📖</span>
+            <span class="nav-text">文档</span>
+          </button>
           <button @click="currentView = 'smart-review'" :class="{ active: currentView === 'smart-review' }" class="nav-btn">
             <span class="nav-icon">🧠</span>
             <span class="nav-text">复习</span>
@@ -155,6 +159,16 @@
               <h3>分类练习</h3>
               <p>按系统分类学习</p>
             </div>
+            <div class="action-arrow">→</div>
+          </div>
+
+          <div class="quick-action-card success" @click="currentView = 'document-review'">
+            <div class="action-icon">📖</div>
+            <div class="action-content">
+              <h3>按文档复习</h3>
+              <p>围绕原始法规学习</p>
+            </div>
+            <div class="action-badge">推荐</div>
             <div class="action-arrow">→</div>
           </div>
 
@@ -318,6 +332,13 @@
         :selected-category="selectedCategory"
       />
 
+      <!-- 文档复习 -->
+      <DocumentReview
+        v-if="currentView === 'document-review'"
+        :user-id="currentUserId"
+        @back="currentView = 'home'"
+      />
+
       <!-- 模拟考试 -->
       <MockExam
         v-if="currentView === 'mock-exam'"
@@ -394,6 +415,7 @@ import ProgressStats from './components/ProgressStats.vue'
 import LoginModal from './components/LoginModal.vue'
 import ChangePasswordModal from './components/ChangePasswordModal.vue'
 import QuestionAdmin from './components/QuestionAdmin.vue'
+import DocumentReview from './components/DocumentReview.vue'
 
 const API_BASE = '/api'
 const API_V2 = '/api/v2'
@@ -409,7 +431,8 @@ export default {
     ProgressStats,
     LoginModal,
     ChangePasswordModal,
-    QuestionAdmin
+    QuestionAdmin,
+    DocumentReview
   },
   data() {
     return {

@@ -1,7 +1,15 @@
 <template>
 <div class="practice-view">
 <div class="practice-header">
-<h2>🎯 快速练习</h2>
+<h2>{{ practiceTitle }}</h2>
+<div v-if="isDocumentPracticeMode || isCategoryPracticeMode" class="document-practice-info">
+  <span v-if="isDocumentPracticeMode" class="document-name">{{ documentInfo?.documentName }}</span>
+  <span v-if="isCategoryPracticeMode" class="document-name">{{ categoryInfo?.categoryName }}</span>
+  <span class="question-progress">
+    {{ (isDocumentPracticeMode ? currentDocumentIndex : currentCategoryIndex) + 1 }} /
+    {{ (isDocumentPracticeMode ? documentPracticeQuestions : categoryPracticeQuestions)?.length }}
+  </span>
+</div>
 
 <!-- 两级分类筛选 -->
 <div class="filter-section">
@@ -164,6 +172,7 @@ class="mode-btn"
 <div v-if="currentQuestion" class="question-container">
 <div class="question">
 <div class="question-meta">
+<span class="meta-tag number-meta">🔢 题号：{{ currentQuestion.question_no || currentQuestion.id }}</span>
 <span class="meta-tag law-meta">{{ currentQuestion.law_category }}</span>
 <span class="meta-tag tech-meta">{{ currentQuestion.tech_category }}</span>
 <span class="meta-tag difficulty-meta">{{ getDifficultyLabel(currentQuestion.difficulty) }}</span>
@@ -296,14 +305,19 @@ class="btn-save-note"
 <!-- 按钮组 -->
 <div class="result-actions">
 <button
-v-if="canGoBack"
+v-if="canGoBack && !isDocumentPracticeMode && !isCategoryPracticeMode"
 @click="goBackToPrevious"
 class="btn btn-secondary"
 >
 ← 上一题
 </button>
 <button @click="nextQuestion" class="btn btn-primary">
-下一题 →
+<template v-if="isDocumentPracticeMode || isCategoryPracticeMode">
+  {{ ((isDocumentPracticeMode ? currentDocumentIndex : currentCategoryIndex) >= (isDocumentPracticeMode ? documentPracticeQuestions : categoryPracticeQuestions)?.length - 1) ? '完成 ✓' : '下一题 →' }}
+</template>
+<template v-else>
+  {{ isLastQuestion ? '完成 ✓' : '下一题 →' }}
+</template>
 </button>
 </div>
 </div>
@@ -353,6 +367,21 @@ hintLevel: 0,
 hintData: null,
 showHint: false,
 
+// 文档练习模式
+isDocumentPracticeMode: false,
+documentPracticeQuestions: [],
+documentInfo: null,
+currentDocumentIndex: 0,
+documentPracticeStats: null,
+practiceTitle: '🎯 快速练习',
+
+// 类别练习模式
+isCategoryPracticeMode: false,
+categoryPracticeQuestions: [],
+categoryInfo: null,
+currentCategoryIndex: 0,
+categoryPracticeStats: null,
+
 // 新题检测
 noNewQuestions: false,
 newQuestionCheck: null,
@@ -389,8 +418,19 @@ this.selectedDifficulty || this.practiceType !== 'random'
 
 async mounted() {
 await this.loadCategories()
-// 默认开始随机练习
-await this.loadQuestion()
+
+// 检查是否有文档练习题目
+if (window.documentPracticeQuestions && window.documentPracticeQuestions.length > 0) {
+  // 检查是文档练习还是类别练习
+  if (window.documentPracticeInfo?.isCategoryPractice) {
+    this.useCategoryPractice()
+  } else {
+    this.useDocumentPractice()
+  }
+} else {
+  // 默认开始随机练习
+  await this.loadQuestion()
+}
 },
 
 methods: {
@@ -502,6 +542,94 @@ await this.submitAnswer(answer)
 },
 
 async submitAnswer(answer) {
+// 文档练习模式或类别练习模式
+if (this.isDocumentPracticeMode || this.isCategoryPracticeMode) {
+  const timeSpent = Math.round((Date.now() - this.questionStartTime) / 1000)
+  const isCategoryMode = this.isCategoryPracticeMode
+
+  // 判断正确性
+  if (this.currentQuestion.question_type === '多项选择题') {
+    const userAnswerSorted = this.selectedOptions.sort().join('')
+    const correctAnswerSorted = this.currentQuestion.correct_answer.split('').sort().join('')
+    this.isCorrect = userAnswerSorted === correctAnswerSorted
+  } else {
+    this.isCorrect = answer === this.currentQuestion.correct_answer
+  }
+
+  this.showResult = true
+
+  // 更新统计
+  if (isCategoryMode) {
+    // 类别练习模式统计
+    if (!this.categoryPracticeStats) {
+      this.categoryPracticeStats = {
+        total: this.categoryPracticeQuestions.length,
+        correct: 0,
+        wrong: 0,
+        answered: 0
+      }
+    }
+    if (this.isCorrect) {
+      this.categoryPracticeStats.correct++
+    } else {
+      this.categoryPracticeStats.wrong++
+    }
+    this.categoryPracticeStats.answered++
+  } else {
+    // 文档练习模式统计
+    if (!this.documentPracticeStats) {
+      this.documentPracticeStats = {
+        total: this.documentPracticeQuestions.length,
+        correct: 0,
+        wrong: 0
+      }
+    }
+    if (this.isCorrect) {
+      this.documentPracticeStats.correct++
+    } else {
+      this.documentPracticeStats.wrong++
+    }
+  }
+
+  // 记录错题
+  if (!this.isCorrect) {
+    try {
+      await axios.post('/api/wrong-answers', {
+        question_id: this.currentQuestion.id,
+        user_id: this.userId
+      })
+    } catch (error) {
+      console.error('记录错题失败:', error)
+    }
+  }
+
+  // 记录练习历史
+  try {
+    const practiceData = {
+      user_id: this.userId,
+      question_id: this.currentQuestion.id,
+      user_answer: answer,
+      is_correct: this.isCorrect,
+      time_spent: timeSpent,
+      practice_mode: isCategoryMode ? 'category' : 'document'
+    }
+
+    if (isCategoryMode) {
+      practiceData.category_name = this.categoryInfo.categoryName
+      practiceData.category_type = this.categoryInfo.categoryType
+    } else {
+      practiceData.document_name = this.documentInfo.documentName
+    }
+
+    await axios.post(`${API_BASE}/practice/history`, practiceData)
+  } catch (error) {
+    console.error('记录练习历史失败:', error)
+  }
+
+  return
+}
+
+// 正常练习模式
 const timeSpent = Math.round((Date.now() - this.questionStartTime) / 1000)
 
 // 判断正确性
@@ -560,7 +688,203 @@ await this.loadNote()
 },
 
 async nextQuestion() {
-await this.loadQuestion()
+// 检查是否是文档练习模式或类别练习模式
+if (this.isDocumentPracticeMode || this.isCategoryPracticeMode) {
+  await this.loadNextDocumentQuestion()
+} else {
+  await this.loadQuestion()
+}
+},
+
+// 使用文档练习题目
+useDocumentPractice() {
+  const questions = window.documentPracticeQuestions
+  const info = window.documentPracticeInfo
+
+  if (!questions || questions.length === 0) {
+    alert('没有可用的题目')
+    this.$emit('back')
+    return
+  }
+
+  // 设置为文档练习模式
+  this.isDocumentPracticeMode = true
+  this.documentPracticeQuestions = questions
+  this.currentDocumentIndex = 0
+  this.documentInfo = info
+
+  // 更新标题
+  this.practiceTitle = `📖 ${info.documentName} - 练习中`
+  this.totalQuestions = questions.length
+  this.currentQuestionIndex = 0
+
+  // 加载第一题
+  this.loadDocumentQuestion(0)
+
+  // 清除全局变量
+  window.documentPracticeQuestions = null
+  window.documentPracticeInfo = null
+},
+
+// 使用类别练习题目
+useCategoryPractice() {
+  const questions = window.documentPracticeQuestions
+  const info = window.documentPracticeInfo
+
+  if (!questions || questions.length === 0) {
+    alert('没有可用的题目')
+    this.$emit('back')
+    return
+  }
+
+  // 设置为类别练习模式
+  this.isCategoryPracticeMode = true
+  this.categoryPracticeQuestions = questions
+  this.currentCategoryIndex = 0
+  this.categoryInfo = info
+
+  // 初始化类别练习统计
+  this.categoryPracticeStats = {
+    total: questions.length,
+    correct: 0,
+    incorrect: 0,
+    answered: 0
+  }
+
+  // 更新标题
+  this.practiceTitle = `📚 ${info.categoryName} - 练习中 (${questions.length}题)`
+  this.totalQuestions = questions.length
+  this.currentQuestionIndex = 0
+
+  // 加载第一题（复用文档练习的加载逻辑）
+  this.loadDocumentQuestion(0)
+
+  // 清除全局变量
+  window.documentPracticeQuestions = null
+  window.documentPracticeInfo = null
+},
+
+// 加载文档练习的题目（也用于类别练习）
+loadDocumentQuestion(index) {
+  // 根据模式选择题目数组
+  const questions = this.isCategoryPracticeMode
+    ? this.categoryPracticeQuestions
+    : this.documentPracticeQuestions
+
+  if (index < 0 || index >= questions.length) {
+    // 练习完成
+    this.showCompletionSummary()
+    return
+  }
+
+  const question = questions[index]
+  this.currentQuestion = question
+  this.currentQuestionIndex = index
+
+  // 更新对应的索引
+  if (this.isCategoryPracticeMode) {
+    this.currentCategoryIndex = index
+  } else {
+    this.currentDocumentIndex = index
+  }
+
+  // 重置答题状态
+  this.selectedAnswer = null
+  this.showResult = false
+  this.isCorrect = false
+  this.explanation = ''
+  this.hintLevel = 0
+  this.hintData = null
+  this.showHint = false
+  this.loading = false
+},
+
+// 加载下一题（文档练习或类别练习）
+loadNextDocumentQuestion() {
+  const questions = this.isCategoryPracticeMode
+    ? this.categoryPracticeQuestions
+    : this.documentPracticeQuestions
+  const currentIndex = this.isCategoryPracticeMode
+    ? this.currentCategoryIndex
+    : this.currentDocumentIndex
+
+  if (currentIndex < questions.length - 1) {
+    this.loadDocumentQuestion(currentIndex + 1)
+  } else {
+    // 练习完成
+    this.showCompletionSummary()
+  }
+},
+
+// 显示完成总结
+showCompletionSummary() {
+  if (this.isCategoryPracticeMode) {
+    // 类别练习完成
+    const correct = this.categoryPracticeStats.correct
+    const total = this.categoryPracticeQuestions.length
+    const accuracy = total > 0 ? ((correct / total) * 100).toFixed(1) : 0
+
+    alert(`📚 类别练习完成！\n\n${this.categoryInfo.categoryName}\n\n正确率：${accuracy}% (${correct}/${total})`)
+  } else {
+    // 文档练习完成
+    const correct = this.documentPracticeStats.correct
+    const total = this.documentPracticeQuestions.length
+    const accuracy = total > 0 ? ((correct / total) * 100).toFixed(1) : 0
+
+    alert(`📖 文档练习完成！\n\n${this.documentInfo.documentName}\n\n正确率：${accuracy}% (${correct}/${total})`)
+  }
+
+  // 返回文档复习页面
+  this.$emit('back')
+},
+
+async loadQuestion() {
+  this.loading = true
+  try {
+    const params = { user_id: this.userId }
+
+    // 添加两级分类筛选
+    if (this.selectedLawCategory) {
+      params.law_category = this.selectedLawCategory
+    }
+    if (this.selectedTechCategory) {
+      params.tech_category = this.selectedTechCategory
+    }
+    if (this.selectedDifficulty) {
+      params.difficulty = this.selectedDifficulty
+    }
+    if (this.practiceType !== 'random') {
+      params.question_type = this.practiceType
+    }
+
+    const response = await axios.get(`${API_BASE}/questions`, { params })
+
+    if (!response.data || response.data.length === 0) {
+      this.currentQuestion = null
+      this.noNewQuestions = true
+      this.newQuestionCheck = await this.checkNewQuestionsAvailable()
+      return
+    }
+
+    this.currentQuestion = response.data
+    this.showResult = false
+    this.selectedAnswer = null
+    this.selectedOptions = []
+    this.isCorrect = false
+    this.questionStartTime = Date.now()
+    this.hintLevel = 0
+    this.hintData = null
+    this.showHint = false
+    this.noNewQuestions = false
+    this.loading = false
+  } catch (error) {
+    console.error('加载题目失败:', error)
+    this.loading = false
+    if (error.response?.status === 404) {
+      this.currentQuestion = null
+      this.noNewQuestions = true
+    }
+  }
 },
 
 // 提示功能
@@ -1134,6 +1458,13 @@ color: #7b1fa2;
 .meta-tag.difficulty-meta {
 background: #fff3e0;
 color: #f57c00;
+}
+
+.meta-tag.number-meta {
+background: #e8f5e9;
+color: #2e7d32;
+font-weight: 600;
+font-size: 0.85rem;
 }
 
 .question h3 {

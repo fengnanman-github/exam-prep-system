@@ -29,16 +29,14 @@
             </div>
             <div class="card-stats">
               <div class="stat-item">
-                <span class="stat-label">简单</span>
-                <span class="stat-value">{{ cat.easy_count }}</span>
+                <span class="stat-label">已练</span>
+                <span class="stat-value practiced">{{ cat.practiced_count || 0 }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">中等</span>
-                <span class="stat-value">{{ cat.medium_count }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">困难</span>
-                <span class="stat-value">{{ cat.hard_count }}</span>
+                <span class="stat-label">正确率</span>
+                <span class="stat-value" :class="getAccuracyClass(cat.accuracy_rate)">
+                  {{ cat.accuracy_rate || 0 }}%
+                </span>
               </div>
             </div>
           </div>
@@ -63,16 +61,14 @@
             </div>
             <div class="card-stats">
               <div class="stat-item">
-                <span class="stat-label">简单</span>
-                <span class="stat-value">{{ cat.easy_count }}</span>
+                <span class="stat-label">已练</span>
+                <span class="stat-value practiced">{{ cat.practiced_count || 0 }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">中等</span>
-                <span class="stat-value">{{ cat.medium_count }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">困难</span>
-                <span class="stat-value">{{ cat.hard_count }}</span>
+                <span class="stat-label">正确率</span>
+                <span class="stat-value" :class="getAccuracyClass(cat.accuracy_rate)">
+                  {{ cat.accuracy_rate || 0 }}%
+                </span>
               </div>
             </div>
           </div>
@@ -292,14 +288,37 @@ export default {
     async loadCategories() {
       try {
         console.log('开始加载分类数据...')
-        const [lawRes, techRes] = await Promise.all([
-          api.get(`${API_BASE}/categories/law`),
-          api.get(`${API_BASE}/categories/tech`)
-        ])
-        console.log('法律法规分类:', lawRes.data)
-        console.log('技术专业分类:', techRes.data)
-        this.lawCategories = lawRes.data
-        this.techCategories = techRes.data
+
+        // 使用统一统计API获取分类数据（包含用户统计）
+        const statsRes = await api.get(`/api/v2/stats/user/${this.userId}`)
+        const stats = statsRes.data
+
+        // 转换法律法规分类数据
+        this.lawCategories = stats.by_law_category.map(cat => ({
+          law_category: cat.category,
+          total_count: cat.total,
+          easy_count: 0, // 需要从题目统计获取
+          medium_count: 0,
+          hard_count: 0,
+          practiced_count: cat.practiced,
+          correct_count: cat.correct,
+          accuracy_rate: Math.round(cat.accuracy * 100 * 10) / 10
+        }))
+
+        // 转换技术专业分类数据
+        this.techCategories = stats.by_tech_category.map(cat => ({
+          tech_category: cat.category,
+          total_count: cat.total,
+          easy_count: 0, // 需要从题目统计获取
+          medium_count: 0,
+          hard_count: 0,
+          practiced_count: cat.practiced,
+          correct_count: cat.correct,
+          accuracy_rate: Math.round(cat.accuracy * 100 * 10) / 10
+        }))
+
+        console.log('法律法规分类:', this.lawCategories)
+        console.log('技术专业分类:', this.techCategories)
       } catch (error) {
         console.error('加载分类失败:', error)
         // 显示友好提示而不是alert
@@ -525,6 +544,12 @@ export default {
         '密码产品': '🛡️'
       }
       return icons[category] || '🔧'
+    },
+
+    getAccuracyClass(rate) {
+      if (rate >= 80) return 'high'
+      if (rate >= 60) return 'medium'
+      return 'low'
     }
   },
   props: {
@@ -657,6 +682,22 @@ export default {
   font-size: 1rem;
   font-weight: 600;
   color: #333;
+}
+
+.stat-value.practiced {
+  color: #2196F3;
+}
+
+.stat-value.high {
+  color: #4CAF50;
+}
+
+.stat-value.medium {
+  color: #FF9800;
+}
+
+.stat-value.low {
+  color: #f44336;
 }
 
 /* 练习设置 */

@@ -273,19 +273,68 @@ export default {
   methods: {
     async loadProgress() {
       try {
-        // 并行加载所有数据
-        const [progressRes, lawRes, techRes, twoLevelRes, chartRes] = await Promise.all([
-          axios.get(`${API_BASE}/progress/${this.userId}`),
-          axios.get(`${API_BASE}/progress/${this.userId}/law`),
-          axios.get(`${API_BASE}/progress/${this.userId}/tech`),
-          axios.get(`${API_BASE}/progress/${this.userId}/two-level`),
+        // 使用统一统计API加载所有数据
+        const [statsRes, chartRes] = await Promise.all([
+          axios.get(`/api/v2/stats/user/${this.userId}`),
           axios.get(`${API_BASE}/progress/${this.userId}/chart?days=7`)
         ])
 
-        this.progress = progressRes.data
-        this.lawProgress = lawRes.data
-        this.techProgress = techRes.data
-        this.twoLevelProgress = twoLevelRes.data
+        const stats = statsRes.data
+
+        // 构建progress数据（保持兼容性）
+        this.progress = {
+          total_practiced: stats.overall.practiced_questions,
+          unique_practiced: stats.overall.practiced_questions,
+          total_correct: stats.overall.correct_answers,
+          total_questions: stats.overall.total_questions,
+          practice_days: 0, // 需要单独计算
+          current_streak: 0, // 需要单独计算
+          best_streak: 0 // 需要单独计算
+        }
+
+        // 使用统一API的分类数据
+        this.lawProgress = stats.by_law_category.map(cat => ({
+          law_category: cat.category,
+          total_count: cat.total,
+          practiced_count: cat.practiced,
+          accuracy_rate: Math.round(cat.accuracy * 100)
+        }))
+
+        this.techProgress = stats.by_tech_category.map(cat => ({
+          tech_category: cat.category,
+          total_count: cat.total,
+          practiced_count: cat.practiced,
+          accuracy_rate: Math.round(cat.accuracy * 100)
+        }))
+
+        // 构建两级分类数据（法律-技术组合）
+        const twoLevelMap = new Map()
+        stats.by_law_category.forEach(lawCat => {
+          twoLevelMap.set(lawCat.category, {
+            law_category: lawCat.category,
+            total_count: lawCat.total,
+            practiced_count: lawCat.practiced,
+            accuracy_rate: Math.round(lawCat.accuracy * 100),
+            tech_categories: []
+          })
+        })
+
+        // 暂时使用文档数据作为技术子分类
+        stats.by_document.forEach(doc => {
+          const lawCat = twoLevelMap.get(doc.category)
+          if (lawCat) {
+            // 从文档名称中提取技术分类（简化处理）
+            lawCat.tech_categories.push({
+              tech_category: doc.document_name,
+              total_count: doc.total,
+              practiced_count: doc.practiced,
+              accuracy_rate: Math.round(doc.accuracy * 100)
+            })
+          }
+        })
+
+        this.twoLevelProgress = Array.from(twoLevelMap.values())
+
         this.chartData = chartRes.data
 
         // 默认展开前两个法律大类

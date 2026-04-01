@@ -53,7 +53,10 @@
       "Bash(~/.bashrc)",
       "Bash(~/.local/bin/gh auth:*)",
       "Bash(~/test-all-pages.sh)",
-      "Bash(~/test-all-pages-fixed.sh:*)"
+      "Bash(~/test-all-pages-fixed.sh:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run)",
+      "Bash(psql:*)"
     ]
   }
 }
