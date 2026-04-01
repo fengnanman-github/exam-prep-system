@@ -624,6 +624,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  backdrop-filter: blur(10px);
 }
 
 .header-content {
@@ -633,6 +634,7 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   gap: 2rem;
+  min-height: 60px;
 }
 
 /* Logo 和品牌 */
@@ -641,18 +643,21 @@ body {
   align-items: center;
   gap: 1rem;
   flex: 0 0 auto;
+  min-width: 0;
 }
 
 .logo {
   font-size: 2.5rem;
   line-height: 1;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  flex-shrink: 0;
 }
 
 .brand-text {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
 .brand-title {
@@ -661,13 +666,19 @@ body {
   margin: 0;
   line-height: 1.2;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-subtitle {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   opacity: 0.9;
   margin: 0;
   font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 右侧操作区 */
@@ -879,20 +890,27 @@ body {
   position: sticky;
   top: 72px;
   z-index: 99;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .nav-container {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  min-height: 56px;
 }
 
 .nav-menu {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
+  -ms-overflow-style: none;
+  width: 100%;
 }
 
 .nav-menu::-webkit-scrollbar {
@@ -903,7 +921,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 1rem;
   border: none;
   background: transparent;
   color: #6b7280;
@@ -913,6 +931,20 @@ body {
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
+  position: relative;
+}
+
+.nav-btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+  border-radius: 2px 2px 0 0;
 }
 
 .nav-btn:hover {
@@ -920,10 +952,19 @@ body {
   color: #374151;
 }
 
+.nav-btn:hover::after {
+  width: 60%;
+}
+
 .nav-btn.active {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.nav-btn.active::after {
+  width: 80%;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .nav-icon {
@@ -946,13 +987,24 @@ body {
 }
 
 /* 响应式样式 */
+@media (max-width: 1200px) {
+  .header-content,
+  .nav-container {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .header {
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1rem;
   }
 
   .header-content {
-    gap: 1rem;
+    gap: 0.75rem;
+  }
+
+  .logo {
+    font-size: 2rem;
   }
 
   .brand-title {
@@ -963,29 +1015,68 @@ body {
     display: none;
   }
 
-  .logo {
-    font-size: 1.8rem;
-  }
-
   .user-display-name {
-    max-width: 80px;
+    max-width: 70px;
   }
 
   .nav-container {
     padding: 0 1rem;
   }
 
-  .nav-text {
-    display: none;
+  .nav-btn {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding: 0.75rem 1rem;
+  }
+
+  .header-content {
+    gap: 0.5rem;
+  }
+
+  .logo {
+    font-size: 1.75rem;
+  }
+
+  .brand-title {
+    font-size: 1rem;
+  }
+
+  .nav-container {
+    padding: 0 0.75rem;
+  }
+
+  .nav-menu {
+    gap: 0;
   }
 
   .nav-btn {
-    padding: 0.75rem;
+    padding: 0.5rem 0.75rem;
   }
 }
 
 @media (max-width: 480px) {
+  .header-content {
+    gap: 0.5rem;
+  }
+
+  .logo {
+    font-size: 1.5rem;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
   .user-info-text {
+    display: none;
+  }
+
+  .dropdown-arrow {
     display: none;
   }
 
@@ -994,11 +1085,27 @@ body {
   }
 
   .btn-login {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
   }
 
-  .btn-login .btn-text {
-    display: none;
+  .nav-container {
+    padding: 0 0.5rem;
+  }
+
+  .nav-btn {
+    padding: 0.5rem;
+  }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 360px) {
+  .nav-btn {
+    padding: 0.5rem 0.625rem;
+  }
+
+  .nav-icon {
+    font-size: 1rem;
   }
 }
 
