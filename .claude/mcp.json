@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "database": {
+      "command": "docker",
+      "args": ["exec", "-it", "exam-prep-system-package-20260330-db-1", "psql", "-U", "exam_user", "-d", "exam_db"],
+      "env": {
+        "PGPASSWORD": "exam_pass123",
+        "PGDATABASE": "exam_db"
+      }
+    },
+    "postgres-cli": {
+      "command": "psql",
+      "args": ["-h", "localhost", "-p", "15432", "-U", "exam_user", "-d", "exam_db"],
+      "env": {
+        "PGPASSWORD": "exam_pass123"
+      }
+    }
+  },
+  "skills": {
+    "commit": "提交代码变更",
+    "docker": "管理Docker容器",
+    "database": "数据库查询操作",
+    "analyze-error": "分析错误信息"
+  }
+}

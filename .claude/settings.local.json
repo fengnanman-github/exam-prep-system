@@ -1,78 +1,73 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(psql:*)",
+      "Bash(curl:*)",
+      "Bash(systemctl:*)",
+      "Bash(service:*)",
+      "Bash(netstat:*)",
+      "Bash(pkill:*)",
+      "Bash(chmod:*)",
+      "Bash(cat:*)",
+      "Read:frontend/**",
+      "Read:backend/**",
+      "Edit:frontend/**",
+      "Edit:backend/**",
+      "Edit:.claude/**",
+      "Write:frontend/**",
+      "Write:backend/**",
+      "Write:.claude/**",
+      "Bash(bash /home/hduser/exam-prep-system-package-20260330/.claude/skills/list-users.sh)",
+      "WebSearch",
+      "Bash(ls:*)"
+    ]
+  },
   "projectContext": {
     "frontendDirectory": "frontend",
     "backendDirectory": "backend",
     "packageJsonPath": "frontend/package.json",
-    "description": "密评备考系统 - Vue.js 前端 + Node.js 后端",
+    "description": "密评备考系统 - Vue3前端 + Express后端 + PostgreSQL数据库",
     "type": "fullstack-web-app",
     "frontendFramework": "vue3",
     "backendFramework": "express",
     "database": "postgresql",
-    "apiBasePath": "/api/v2"
+    "apiBasePath": "/api/v2",
+    "keyFiles": [
+      "frontend/src/App.vue",
+      "backend/server.js",
+      "backend/unified-stats-api.js",
+      "frontend/src/components/LoginModal.vue"
+    ]
   },
   "preferences": {
     "alwaysUseGlobForFileSearch": true,
     "alwaysUseGrepForContentSearch": true,
     "avoidFindCommand": true,
-    "maxSearchResults": 50,
+    "maxSearchResults": 20,
     "preferEditOverWrite": true,
-    "skipNodeModules": true
-  },
-  "permissions": {
-    "allow": [
-      "Bash(docker:*)",
-      "Bash(docker-compose:*)",
-      "Bash(netstat:*)",
-      "Bash(sudo:*)",
-      "Bash(xargs:*)",
-      "Bash(curl:*)",
-      "Bash(python3:*)",
-      "Bash(npm run build:*)",
-      "Bash(find:*)",
-      "Bash(ls:*)",
-      "Bash(pip3 install:*)",
-      "Bash(apt-get:*)",
-      "Bash(apt-get install:*)",
-      "Bash(npm install:*)",
-      "Bash(node:*)",
-      "Bash(pkill:*)",
-      "Bash(chmod:*)",
-      "Bash(grep:*)",
-      "Bash(chown:*)",
-      "Bash(cat:*)",
-      "Bash(wc:*)",
-      "Bash(du:*)",
-      "Bash(git --version)",
-      "Bash(git init:*)",
-      "Bash(git config:*)",
-      "Bash(git branch:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(gh:*)",
-      "Bash(git remote add:*)",
-      "Bash(git push:*)",
-      "Bash(ssh-keygen:*)",
-      "Bash(git remote set-url:*)",
-      "Bash(ssh:*)",
-      "Bash(export:*)",
-      "Bash(echo:*)",
-      "Bash(npm run typecheck:*)",
-      "Bash(npm run)",
-      "Bash(psql:*)",
-      "Bash(PGPASSWORD=* psql:*)"
-    ]
+    "skipNodeModules": true,
+    "compactOutput": true
   },
   "searchExcludePatterns": [
     "node_modules/**",
     "dist/**",
     ".git/**",
     "*.min.js",
-    "*.min.css"
+    "*.min.css",
+    "*.bak",
+    "*.log"
   ],
   "filePriorityPatterns": [
-    "frontend/src/**/*.vue",
-    "frontend/src/components/**",
-    "backend/**/*.js",
-    "backend/api*.js"
+    "frontend/src/components/**/*.vue",
+    "frontend/src/App.vue",
+    "backend/*.js",
+    "backend/api*.js",
+    ".claude/**"
   ]
 }
