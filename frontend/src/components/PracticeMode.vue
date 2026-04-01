@@ -456,7 +456,7 @@ if (this.practiceType !== 'random') {
 params.type = this.practiceType
 }
 
-const response = await axios.get(`${API_BASE}/questions/practice`, { params })
+const response = await axios.get(`${API_BASE}/questions`, { params })
 this.currentQuestion = response.data
 this.showResult = false
 this.questionStartTime = Date.now()
