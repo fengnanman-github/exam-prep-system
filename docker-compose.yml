@@ -19,7 +19,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=exam_db
       - DB_USER=exam_user
-      - DB_PASSWORD=exam_pass123
+      - DB_PASSWORD=change_this_password
       - REDIS_HOST=redis
     depends_on:
       - db
@@ -33,7 +33,7 @@ services:
     environment:
       - POSTGRES_DB=exam_db
       - POSTGRES_USER=exam_user
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-exam_pass123}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-change_this_password}
       - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
       - "15432:5432"

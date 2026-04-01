@@ -20,7 +20,7 @@ const pool = new Pool({
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME || 'exam_db',
     user: process.env.DB_USER || 'exam_user',
-    password: process.env.DB_PASSWORD || 'exam_pass123'
+    password: process.env.DB_PASSWORD || 'change_this_password'
 });
 
 // 中间件
