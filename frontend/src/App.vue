@@ -77,6 +77,10 @@
             <span class="nav-icon">📂</span>
             <span class="nav-text">分类</span>
           </button>
+          <button @click="currentView = 'exam-category-practice'" :class="{ active: currentView === 'exam-category-practice' }" class="nav-btn highlight-btn">
+            <span class="nav-icon">🎯</span>
+            <span class="nav-text">考试类别</span>
+          </button>
           <button @click="currentView = 'document-review'" :class="{ active: currentView === 'document-review' }" class="nav-btn">
             <span class="nav-icon">📖</span>
             <span class="nav-text">文档</span>
@@ -332,6 +336,12 @@
         :selected-category="selectedCategory"
       />
 
+      <!-- 考试类别练习 -->
+      <ExamCategoryPractice
+        v-if="currentView === 'exam-category-practice'"
+        @back="currentView = 'home'"
+      />
+
       <!-- 文档复习 -->
       <DocumentReview
         v-if="currentView === 'document-review'"
@@ -408,6 +418,7 @@ import axios from 'axios'
 import { authStore } from './store/auth'
 import PracticeMode from './components/PracticeMode.vue'
 import CategoryPractice from './components/CategoryPractice.vue'
+import ExamCategoryPractice from './components/ExamCategoryPractice.vue'
 import MockExam from './components/MockExam.vue'
 import SmartReview from './components/SmartReview.vue'
 import WrongAnswersBook from './components/WrongAnswersBook.vue'
@@ -425,6 +436,7 @@ export default {
   components: {
     PracticeMode,
     CategoryPractice,
+    ExamCategoryPractice,
     MockExam,
     SmartReview,
     WrongAnswersBook,
@@ -1029,6 +1041,19 @@ body {
 .admin-btn:hover {
   background: linear-gradient(135deg, #F57C00 0%, #E65100 100%);
   color: white;
+}
+
+.highlight-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+  font-weight: 600;
+}
+
+.highlight-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 /* 响应式样式 */

@@ -350,22 +350,55 @@ export default {
     },
 
     async submitReview(quality) {
+      // 添加提交状态和详细错误信息
+      console.log('=== 智能复习提交 ===')
+      console.log('用户ID:', this.userId)
+      console.log('题目ID:', this.currentQuestion.question_id)
+      console.log('题目ID (id):', this.currentQuestion.id)
+      console.log('质量评分:', quality)
+
       try {
-        await axios.post(`${API_BASE}/review/submit`, {
+        // 使用正确的question_id字段
+        const questionId = this.currentQuestion.question_id || this.currentQuestion.id
+        if (!questionId) {
+          throw new Error('题目ID不存在')
+        }
+
+        const response = await axios.post(`${API_BASE}/review/submit`, {
           user_id: this.userId,
-          question_id: this.currentQuestion.question_id,
+          question_id: questionId,
           quality: quality
         })
 
-        const response = await axios.get(`${API_BASE}/review/stats/${this.userId}`)
-        this.reviewStats = response.data
+        console.log('✅ 提交成功:', response.data)
+
+        // 如果掌握了，显示提示
+        if (response.data.mastered) {
+          this.$message?.success('🎉 恭喜！该题目已掌握')
+        }
+
+        // 更新统计
+        const statsResponse = await axios.get(`${API_BASE}/review/stats/${this.userId}`)
+        this.reviewStats = statsResponse.data
 
         this.reviewedCount++
         this.currentIndex++
         this.showQuestion()
       } catch (error) {
-        console.error('提交复习失败:', error)
-        alert('提交复习失败，请重试')
+        console.error('=== 提交复习失败 ===')
+        console.error('错误类型:', error.name)
+        console.error('错误消息:', error.message)
+        console.error('完整错误:', error)
+        console.error('响应数据:', error.response?.data)
+
+        // 显示详细的错误信息
+        let errorMessage = '提交复习失败，请重试'
+        if (error.response?.data?.error) {
+          errorMessage = `提交失败: ${error.response.data.error}`
+        } else if (error.message) {
+          errorMessage = `提交失败: ${error.message}`
+        }
+        alert(errorMessage)
       }
     },
 

@@ -448,20 +448,7 @@ export default {
         '行政法规': '行政法规文件'
       }
       return descriptions[category] || ''
-    }
-  },
-  computed: {
-    uniqueCategories() {
-      const categories = new Set()
-      this.documents.forEach(doc => {
-        if (doc.document_category) {
-          categories.add(doc.document_category)
-        }
-      })
-      return Array.from(categories).sort()
-    }
-  },
-  methods: {
+    },
     // 类别相关方法
     getCategoryLabel(category) {
       const labels = {
@@ -608,6 +595,17 @@ export default {
         alert('获取题目失败: ' + (err.response?.data?.error || err.message))
       }
     }
+  },
+  computed: {
+    uniqueCategories() {
+      const categories = new Set()
+      this.documents.forEach(doc => {
+        if (doc.document_category) {
+          categories.add(doc.document_category)
+        }
+      })
+      return Array.from(categories).sort()
+    }
   }
 }
 </script>
@@ -738,20 +736,34 @@ export default {
 }
 
 .filter-select.category-select {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: white;
+  color: #2d3748;
   border-color: #667eea;
   font-weight: 500;
   min-width: 200px;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .filter-select.category-select:hover {
-  background: linear-gradient(135deg, #5568d3 0%, #6b4c8a 100%);
+  border-color: #5568d3;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
 }
 
 .filter-select.category-select:focus {
   border-color: #5568d3;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+  outline: none;
+}
+
+/* 确保下拉选项清晰可见 */
+.filter-select.category-select option {
+  background: white;
+  color: #2d3748;
+  padding: 0.5rem;
+}
+
+.filter-select.category-select option:hover {
+  background: #f7fafc;
 }
 
 /* 类别练习栏 */

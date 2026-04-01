@@ -112,6 +112,32 @@ module.exports = (pool) => {
       `;
       const techCategoryResult = await pool.query(techCategoryStatsQuery, [userId]);
 
+      // 6. 按考试类别统计（密评考试5大类别）
+      const examCategoryStatsQuery = `
+        SELECT
+          q.exam_category,
+          COUNT(*) as total_questions,
+          COUNT(DISTINCT ph.question_id) as practiced_questions,
+          COUNT(DISTINCT ph.question_id) FILTER (WHERE ph.is_correct = true) as correct_questions
+        FROM questions q
+        LEFT JOIN (
+          SELECT DISTINCT question_id, is_correct
+          FROM practice_history
+          WHERE user_id = $1
+        ) ph ON q.id = ph.question_id
+        WHERE q.exam_category IS NOT NULL
+        GROUP BY q.exam_category
+        ORDER BY
+          CASE q.exam_category
+            WHEN '密码应用与安全性评估实务综合' THEN 1
+            WHEN '密码技术基础及相关标准' THEN 2
+            WHEN '密码产品原理、应用及相关标准' THEN 3
+            WHEN '密评理论、技术及相关标准' THEN 4
+            WHEN '密码政策法规' THEN 5
+          END
+      `;
+      const examCategoryResult = await pool.query(examCategoryStatsQuery, [userId]);
+
       // 7. 错题统计
       const wrongAnswersQuery = `
         SELECT
@@ -179,6 +205,15 @@ module.exports = (pool) => {
           practiced: parseInt(row.practiced_questions),
           correct: parseInt(row.correct_questions),
           accuracy: row.total > 0 ? (row.correct_questions / row.total) : 0
+        })),
+
+        // 考试类别统计（密评考试5大类别）
+        by_exam_category: examCategoryResult.rows.map(row => ({
+          category: row.exam_category,
+          total: parseInt(row.total_questions),
+          practiced: parseInt(row.practiced_questions),
+          correct: parseInt(row.correct_questions),
+          accuracy: row.total_questions > 0 ? (row.correct_questions / row.total_questions) : 0
         }))
       };
 
