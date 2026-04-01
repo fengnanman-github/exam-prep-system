@@ -440,8 +440,24 @@ export default {
 
     // 添加滚动监听
     window.addEventListener('scroll', this.handleScroll)
+
+    // 添加全局点击监听，用于关闭用户菜单
+    document.addEventListener('click', this.handleClickOutside)
+  },
+  beforeUnmount() {
+    // 移除事件监听
+    window.removeEventListener('scroll', this.handleScroll)
+    document.removeEventListener('click', this.handleClickOutside)
   },
   methods: {
+    handleClickOutside(event) {
+      // 如果点击的不是用户下拉菜单区域，关闭菜单
+      const userSection = this.$el.querySelector('.user-section')
+      if (userSection && !userSection.contains(event.target)) {
+        this.showUserMenu = false
+      }
+    },
+
     toggleUserMenu() {
       this.showUserMenu = !this.showUserMenu
     },
@@ -619,7 +635,7 @@ body {
 .header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 1rem 2rem;
+  padding: 0.875rem 2rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   position: sticky;
   top: 0;
@@ -634,20 +650,20 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   gap: 2rem;
-  min-height: 60px;
+  height: 64px;
 }
 
 /* Logo 和品牌 */
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem;
   flex: 0 0 auto;
   min-width: 0;
 }
 
 .logo {
-  font-size: 2.5rem;
+  font-size: 2rem;
   line-height: 1;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
   flex-shrink: 0;
@@ -656,12 +672,12 @@ body {
 .brand-text {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.125rem;
   min-width: 0;
 }
 
 .brand-title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   margin: 0;
   line-height: 1.2;
@@ -672,7 +688,7 @@ body {
 }
 
 .brand-subtitle {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   opacity: 0.9;
   margin: 0;
   font-weight: 400;
@@ -685,7 +701,7 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem;
   flex: 0 0 auto;
 }
 
@@ -697,33 +713,34 @@ body {
 .user-dropdown {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.625rem;
+  padding: 0.5rem 0.875rem;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  height: 40px;
 }
 
 .user-dropdown:hover {
   background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: linear-gradient(135deg, #FF9800, #F57C00);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-size: 0.875rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .avatar-icon {
@@ -733,27 +750,31 @@ body {
 .user-info-text {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.0625rem;
+  min-width: 0;
 }
 
 .user-display-name {
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  max-width: 120px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .user-role {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   opacity: 0.85;
+  line-height: 1.2;
 }
 
 .dropdown-arrow {
-  font-size: 0.7rem;
-  transition: transform 0.3s ease;
+  font-size: 0.625rem;
+  transition: transform 0.2s ease;
   opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .dropdown-arrow.active {
@@ -886,11 +907,11 @@ body {
 .nav {
   background: white;
   padding: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   position: sticky;
-  top: 72px;
+  top: 64px;
   z-index: 99;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .nav-container {
@@ -899,13 +920,13 @@ body {
   padding: 0 2rem;
   display: flex;
   align-items: center;
-  min-height: 56px;
+  height: 48px;
 }
 
 .nav-menu {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.125rem;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -921,17 +942,18 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1rem;
+  padding: 0.5rem 0.875rem;
   border: none;
   background: transparent;
   color: #6b7280;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
   position: relative;
+  height: 36px;
 }
 
 .nav-btn::after {
@@ -942,7 +964,7 @@ body {
   width: 0;
   height: 2px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   transform: translateX(-50%);
   border-radius: 2px 2px 0 0;
 }
@@ -959,7 +981,7 @@ body {
 .nav-btn.active {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
 }
 
 .nav-btn.active::after {
@@ -996,46 +1018,12 @@ body {
 
 @media (max-width: 768px) {
   .header {
-    padding: 0.875rem 1rem;
-  }
-
-  .header-content {
-    gap: 0.75rem;
-  }
-
-  .logo {
-    font-size: 2rem;
-  }
-
-  .brand-title {
-    font-size: 1.1rem;
-  }
-
-  .brand-subtitle {
-    display: none;
-  }
-
-  .user-display-name {
-    max-width: 70px;
-  }
-
-  .nav-container {
-    padding: 0 1rem;
-  }
-
-  .nav-btn {
-    padding: 0.625rem 0.875rem;
-    font-size: 0.875rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .header {
     padding: 0.75rem 1rem;
   }
 
   .header-content {
-    gap: 0.5rem;
+    gap: 1rem;
+    height: 56px;
   }
 
   .logo {
@@ -1043,7 +1031,68 @@ body {
   }
 
   .brand-title {
+    font-size: 1.125rem;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .user-dropdown {
+    padding: 0.5rem 0.625rem;
+    gap: 0.5rem;
+  }
+
+  .user-display-name {
+    max-width: 80px;
+  }
+
+  .user-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 0.875rem;
+  }
+
+  .nav-container {
+    padding: 0 1rem;
+  }
+
+  .nav-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    height: 34px;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding: 0.625rem 1rem;
+  }
+
+  .header-content {
+    gap: 0.75rem;
+    height: 52px;
+  }
+
+  .logo {
+    font-size: 1.625rem;
+  }
+
+  .brand-title {
     font-size: 1rem;
+  }
+
+  .user-dropdown {
+    padding: 0.5rem;
+    gap: 0.375rem;
+  }
+
+  .user-info-text {
+    display: none;
+  }
+
+  .dropdown-arrow {
+    display: none;
   }
 
   .nav-container {
@@ -1055,13 +1104,19 @@ body {
   }
 
   .nav-btn {
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.625rem;
+    height: 32px;
   }
 }
 
 @media (max-width: 480px) {
+  .header {
+    padding: 0.5rem 1rem;
+  }
+
   .header-content {
     gap: 0.5rem;
+    height: 48px;
   }
 
   .logo {
@@ -1072,12 +1127,15 @@ body {
     display: none;
   }
 
-  .user-info-text {
-    display: none;
+  .user-dropdown {
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
   }
 
-  .dropdown-arrow {
-    display: none;
+  .user-avatar {
+    width: 32px;
+    height: 32px;
   }
 
   .header-actions {
@@ -1085,7 +1143,7 @@ body {
   }
 
   .btn-login {
-    padding: 0.5rem 0.875rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
   }
 
@@ -1095,17 +1153,29 @@ body {
 
   .nav-btn {
     padding: 0.5rem;
+    height: 32px;
   }
 }
 
 /* 超小屏幕优化 */
 @media (max-width: 360px) {
-  .nav-btn {
-    padding: 0.5rem 0.625rem;
+  .header-content {
+    height: 44px;
   }
 
-  .nav-icon {
-    font-size: 1rem;
+  .logo {
+    font-size: 1.375rem;
+  }
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+
+  .nav-btn {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.8125rem;
   }
 }
 
