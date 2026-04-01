@@ -3,7 +3,20 @@
     "frontendDirectory": "frontend",
     "backendDirectory": "backend",
     "packageJsonPath": "frontend/package.json",
-    "description": "密评备考系统 - Vue.js 前端 + Node.js 后端"
+    "description": "密评备考系统 - Vue.js 前端 + Node.js 后端",
+    "type": "fullstack-web-app",
+    "frontendFramework": "vue3",
+    "backendFramework": "express",
+    "database": "postgresql",
+    "apiBasePath": "/api/v2"
+  },
+  "preferences": {
+    "alwaysUseGlobForFileSearch": true,
+    "alwaysUseGrepForContentSearch": true,
+    "avoidFindCommand": true,
+    "maxSearchResults": 50,
+    "preferEditOverWrite": true,
+    "skipNodeModules": true
   },
   "permissions": {
     "allow": [
@@ -24,21 +37,10 @@
       "Bash(node:*)",
       "Bash(pkill:*)",
       "Bash(chmod:*)",
-      "Bash(__NEW_LINE_04f74e85331d1ede__ head -100 /tmp/problem_questions.csv)",
-      "Bash(/tmp/question_fix_log.txt:*)",
       "Bash(grep:*)",
       "Bash(chown:*)",
-      "Bash(/tmp/build.sh << 'EOF':*)",
-      "Bash(done)",
-      "Bash(PGPASSWORD=123456 psql:*)",
       "Bash(cat:*)",
       "Bash(wc:*)",
-      "Bash(/home/hduser/exam-backup-20260330/check_status.sh:*)",
-      "Bash(bash /home/hduser/exam-backup-20260330/check_status.sh)",
-      "Bash(~/exam-backup-20260331-final/BACKUP_INFO.txt:*)",
-      "Bash(~/exam-backup-20260331-final/FULL_BACKUP.sh:*)",
-      "Bash(~/BACKUP_QUICK.sh:*)",
-      "Bash(~/BACKUP_QUICK.sh)",
       "Bash(du:*)",
       "Bash(git --version)",
       "Bash(git init:*)",
@@ -52,17 +54,25 @@
       "Bash(ssh-keygen:*)",
       "Bash(git remote set-url:*)",
       "Bash(ssh:*)",
-      "Bash(~/create-github-repo.sh:*)",
-      "Bash(__NEW_LINE_a96f6bf36eeeae56__ chmod +x ~/create-github-repo.sh)",
       "Bash(export:*)",
       "Bash(echo:*)",
-      "Bash(~/.bashrc)",
-      "Bash(~/.local/bin/gh auth:*)",
-      "Bash(~/test-all-pages.sh)",
-      "Bash(~/test-all-pages-fixed.sh:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npm run)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(PGPASSWORD=* psql:*)"
     ]
-  }
+  },
+  "searchExcludePatterns": [
+    "node_modules/**",
+    "dist/**",
+    ".git/**",
+    "*.min.js",
+    "*.min.css"
+  ],
+  "filePriorityPatterns": [
+    "frontend/src/**/*.vue",
+    "frontend/src/components/**",
+    "backend/**/*.js",
+    "backend/api*.js"
+  ]
 }
