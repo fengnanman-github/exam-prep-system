@@ -108,7 +108,16 @@
             class="nav-btn admin-btn"
           >
             <span class="nav-icon">🔧</span>
-            <span class="nav-text">管理</span>
+            <span class="nav-text">题目管理</span>
+          </button>
+          <button
+            v-if="authStore.isAdmin()"
+            @click="currentView = 'admin-config'"
+            :class="{ active: currentView === 'admin-config' }"
+            class="nav-btn admin-btn"
+          >
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">系统配置</span>
           </button>
         </div>
       </div>
@@ -383,6 +392,12 @@
         :user-id="currentUserId"
         @back="currentView = 'home'"
       />
+
+      <!-- 系统配置（管理员） -->
+      <AdminConfig
+        v-if="currentView === 'admin-config'"
+        @back="currentView = 'home'"
+      />
     </main>
 
     <!-- 返回顶部按钮 -->
@@ -426,6 +441,7 @@ import ProgressStats from './components/ProgressStats.vue'
 import LoginModal from './components/LoginModal.vue'
 import ChangePasswordModal from './components/ChangePasswordModal.vue'
 import QuestionAdmin from './components/QuestionAdmin.vue'
+import AdminConfig from './components/AdminConfig.vue'
 import DocumentReview from './components/DocumentReview.vue'
 
 const API_BASE = '/api'
@@ -444,6 +460,7 @@ export default {
     LoginModal,
     ChangePasswordModal,
     QuestionAdmin,
+    AdminConfig,
     DocumentReview
   },
   data() {
