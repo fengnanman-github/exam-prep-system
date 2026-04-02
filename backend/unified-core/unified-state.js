@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const { getInstance: getVersionManager } = require('./version-manager');
 
 /**
  * 创建统一状态路由
@@ -13,6 +14,7 @@ const express = require('express');
  */
 module.exports = (pool) => {
     const router = express.Router();
+    const versionManager = getVersionManager(pool);
 
     /**
      * 获取用户题目统一状态
@@ -31,6 +33,15 @@ module.exports = (pool) => {
 
             if (!user_id) {
                 return res.status(400).json({ error: '缺少user_id参数' });
+            }
+
+            // 检查用户是否有权访问统一状态功能
+            const hasAccess = await versionManager.isFeatureEnabled('unifiedState', user_id);
+            if (!hasAccess) {
+                return res.status(403).json({
+                    error: '功能未启用',
+                    message: '统一状态功能暂未对您开放'
+                });
             }
 
             // 设置当前用户ID（用于视图查询）
@@ -158,6 +169,15 @@ module.exports = (pool) => {
                 return res.status(400).json({ error: '缺少user_id参数' });
             }
 
+            // 检查用户是否有权访问统一状态功能
+            const hasAccess = await versionManager.isFeatureEnabled('unifiedState', user_id);
+            if (!hasAccess) {
+                return res.status(403).json({
+                    error: '功能未启用',
+                    message: '统一状态功能暂未对您开放'
+                });
+            }
+
             // 设置当前用户ID
             await pool.query('SELECT set_current_user($1)', [user_id]);
 
@@ -214,6 +234,15 @@ module.exports = (pool) => {
 
             if (!user_id) {
                 return res.status(400).json({ error: '缺少user_id参数' });
+            }
+
+            // 检查用户是否有权访问统一状态功能
+            const hasAccess = await versionManager.isFeatureEnabled('unifiedState', user_id);
+            if (!hasAccess) {
+                return res.status(403).json({
+                    error: '功能未启用',
+                    message: '统一状态功能暂未对您开放'
+                });
             }
 
             const updates = [];
@@ -310,6 +339,15 @@ module.exports = (pool) => {
                 return res.status(400).json({ error: '缺少user_id参数' });
             }
 
+            // 检查用户是否有权访问统一状态功能
+            const hasAccess = await versionManager.isFeatureEnabled('unifiedState', user_id);
+            if (!hasAccess) {
+                return res.status(403).json({
+                    error: '功能未启用',
+                    message: '统一状态功能暂未对您开放'
+                });
+            }
+
             // 检查当前状态
             const currentResult = await pool.query(`
                 SELECT id FROM uncertain_questions
@@ -368,6 +406,15 @@ module.exports = (pool) => {
                 return res.status(400).json({ error: '缺少user_id参数' });
             }
 
+            // 检查用户是否有权访问统一状态功能
+            const hasAccess = await versionManager.isFeatureEnabled('unifiedState', user_id);
+            if (!hasAccess) {
+                return res.status(403).json({
+                    error: '功能未启用',
+                    message: '统一状态功能暂未对您开放'
+                });
+            }
+
             // 检查当前状态
             const currentResult = await pool.query(`
                 SELECT id, notes FROM favorite_questions
@@ -418,6 +465,15 @@ module.exports = (pool) => {
         try {
             const { userId } = req.params;
             const { exam_category } = req.query;
+
+            // 检查用户是否有权访问统一统计功能
+            const hasAccess = await versionManager.isFeatureEnabled('unifiedStats', userId);
+            if (!hasAccess) {
+                return res.status(403).json({
+                    error: '功能未启用',
+                    message: '统一统计功能暂未对您开放'
+                });
+            }
 
             // 设置当前用户ID
             await pool.query('SELECT set_current_user($1)', [userId]);

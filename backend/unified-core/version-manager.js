@@ -70,19 +70,28 @@ class VersionManager {
             `, [featureName]);
 
             if (result.rows.length === 0) {
+                console.log(`[VersionManager] Feature ${featureName} not found`);
                 return false;
             }
 
             const flag = result.rows[0];
+            console.log(`[VersionManager] Checking ${feature} for user ${userId}:`, {
+                is_enabled: flag.is_enabled,
+                enabled_for_users: flag.enabled_for_users,
+                enabled_percentage: flag.enabled_percentage
+            });
 
             // 全局启用
             if (flag.is_enabled) {
+                console.log(`[VersionManager] Feature ${feature} is globally enabled`);
                 return true;
             }
 
             // 白名单检查
             if (flag.enabled_for_users && flag.enabled_for_users.length > 0) {
+                console.log(`[VersionManager] Checking whitelist: ${userId} in ${flag.enabled_for_users}?`);
                 if (flag.enabled_for_users.includes(userId)) {
+                    console.log(`[VersionManager] User ${userId} is in whitelist`);
                     return true;
                 }
             }
@@ -92,9 +101,12 @@ class VersionManager {
                 // 基于用户ID的哈希值进行灰度
                 const hash = this._hashCode(userId);
                 const threshold = flag.enabled_percentage;
-                return (hash % 100) < threshold;
+                const result = (hash % 100) < threshold;
+                console.log(`[VersionManager] Percentage check: ${hash} % 100 < ${threshold} = ${result}`);
+                return result;
             }
 
+            console.log(`[VersionManager] Feature ${feature} is not enabled for user ${userId}`);
             return false;
         } catch (error) {
             console.error(`检查功能 ${feature} 状态失败:`, error);

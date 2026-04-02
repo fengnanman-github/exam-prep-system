@@ -6,6 +6,7 @@
 
 const express = require('express');
 const { calculateQuality, updateSuperMemo, initializeSuperMemo } = require('./supermemo-engine');
+const { getInstance: getVersionManager } = require('./version-manager');
 
 /**
  * 创建统一练习路由
@@ -15,6 +16,7 @@ const { calculateQuality, updateSuperMemo, initializeSuperMemo } = require('./su
  */
 module.exports = (pool) => {
     const router = express.Router();
+    const versionManager = getVersionManager(pool);
 
     /**
      * 统一练习提交接口
@@ -57,6 +59,16 @@ module.exports = (pool) => {
             // 验证必要参数
             if (!user_id || !question_id || user_answer === undefined || is_correct === undefined) {
                 return res.status(400).json({ error: '缺少必要参数' });
+            }
+
+            // 检查用户是否有权访问统一练习功能
+            const hasAccess = await versionManager.isFeatureEnabled('unifiedSuperMemo', user_id);
+            if (!hasAccess) {
+                client.release();
+                return res.status(403).json({
+                    error: '功能未启用',
+                    message: '统一练习功能暂未对您开放'
+                });
             }
 
             await client.query('BEGIN');

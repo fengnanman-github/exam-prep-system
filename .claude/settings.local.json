@@ -30,7 +30,8 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(python3:*)",
-      "Bash(printf:*)"
+      "Bash(printf:*)",
+      "Bash(echo:*)"
     ]
   },
   "projectContext": {
