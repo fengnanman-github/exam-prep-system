@@ -203,6 +203,8 @@
 
 <script>
 import axios from 'axios'
+import { unifiedStateStore } from '../stores/unifiedState'
+import { versionConfig } from '../config/version-config'
 
 const API_BASE = '/api/v2'
 
@@ -223,6 +225,7 @@ export default {
       selectedOptions: [],
       hasAnswered: false,
       isAnswerCorrect: false,
+      answerStartTime: null,
       qualityLevels: [
         { value: 5, label: '完美', class: 'perfect' },
         { value: 4, label: '良好', class: 'good' },
@@ -230,17 +233,55 @@ export default {
         { value: 2, label: '模糊', class: 'vague' },
         { value: 1, label: '困难', class: 'hard' },
         { value: 0, label: '忘记', class: 'forgot' }
-      ]
+      ],
+      // 统一API相关
+      useUnifiedAPI: false
+    }
+  },
+  computed: {
+    userId() {
+      // 从props获取或使用默认值
+      return this.$props.userId || 'exam_user_001'
+    },
+    isUnifiedEnabled() {
+      return this.useUnifiedAPI && versionConfig.isFeatureEnabled('unifiedSuperMemo')
     }
   },
   async mounted() {
+    // 检查是否使用统一API
+    await this.checkAPIVersion()
     await this.loadReviewStats()
   },
   methods: {
+    async checkAPIVersion() {
+      try {
+        await versionConfig.init()
+        this.useUnifiedAPI = versionConfig.useUnifiedAPI()
+        console.log('统一API状态:', this.useUnifiedAPI)
+      } catch (error) {
+        console.error('检查API版本失败:', error)
+        this.useUnifiedAPI = false
+      }
+    },
+
     async loadReviewStats() {
       try {
-        const response = await axios.get(`${API_BASE}/review/stats/${this.userId}`)
-        this.reviewStats = response.data
+        if (this.isUnifiedEnabled) {
+          // 使用统一统计API
+          const stats = await unifiedStateStore.getUserStats()
+          if (stats && stats.wrong_answers) {
+            this.reviewStats = {
+              total_review_questions: stats.wrong_answers.total,
+              due_today: stats.wrong_answers.due_review,
+              average_mastery: stats.wrong_answers.avg_mastery,
+              mastered_count: stats.wrong_answers.mastered
+            }
+          }
+        } else {
+          // 使用旧版API
+          const response = await axios.get(`${API_BASE}/review/stats/${this.userId}`)
+          this.reviewStats = response.data
+        }
       } catch (error) {
         console.error('加载复习统计失败:', error)
       }
@@ -249,17 +290,30 @@ export default {
     async startReview(mode) {
       this.reviewMode = mode
       try {
-        let url = `${API_BASE}/review/`
-        if (mode === 'today') {
-          url += `today/${this.userId}`
-        } else if (mode === 'recommend') {
-          url += `recommend/${this.userId}?limit=20`
+        let questions = []
+
+        if (this.isUnifiedEnabled) {
+          // 使用统一API获取题目
+          const url = `${API_BASE}/unified/practice/due-review/${this.userId}`
+          const response = await axios.get(url, {
+            params: { limit: mode === 'all' ? 100 : 20 }
+          })
+          questions = response.data.questions
         } else {
-          url += `recommend/${this.userId}?limit=100`
+          // 使用旧版API
+          let url = `${API_BASE}/review/`
+          if (mode === 'today') {
+            url += `today/${this.userId}`
+          } else if (mode === 'recommend') {
+            url += `recommend/${this.userId}?limit=20`
+          } else {
+            url += `recommend/${this.userId}?limit=100`
+          }
+          const response = await axios.get(url)
+          questions = response.data
         }
 
-        const response = await axios.get(url)
-        this.reviewQuestions = response.data
+        this.reviewQuestions = questions
         this.currentIndex = 0
 
         if (this.reviewQuestions.length === 0) {
@@ -279,9 +333,16 @@ export default {
         this.userAnswer = null
         this.selectedOptions = []
         this.isAnswerCorrect = false
+        // 开始计时
+        this.answerStartTime = Date.now()
       } else {
         this.completeReview()
       }
+    },
+
+    getTimeSpent() {
+      if (!this.answerStartTime) return 0
+      return Math.round((Date.now() - this.answerStartTime) / 1000)
     },
 
     toggleOption(key) {
@@ -350,46 +411,66 @@ export default {
     },
 
     async submitReview(quality) {
-      // 添加提交状态和详细错误信息
       console.log('=== 智能复习提交 ===')
       console.log('用户ID:', this.userId)
-      console.log('题目ID:', this.currentQuestion.question_id)
-      console.log('题目ID (id):', this.currentQuestion.id)
+      console.log('题目ID:', this.currentQuestion.question_id || this.currentQuestion.id)
       console.log('质量评分:', quality)
+      console.log('使用统一API:', this.isUnifiedEnabled)
 
       try {
-        // 使用正确的question_id字段
         const questionId = this.currentQuestion.question_id || this.currentQuestion.id
         if (!questionId) {
           throw new Error('题目ID不存在')
         }
 
-        const response = await axios.post(`${API_BASE}/review/submit`, {
-          user_id: this.userId,
-          question_id: questionId,
-          quality: quality
-        })
+        let response
 
-        console.log('✅ 提交成功:', response.data)
+        if (this.isUnifiedEnabled) {
+          // 使用统一API提交
+          // 质量评分映射：用户主观评分转换为正确性
+          const isCorrect = this.isAnswerCorrect
+          const timeSpent = this.getTimeSpent()
+
+          response = await axios.post(`${API_BASE}/unified/practice/submit`, {
+            user_id: this.userId,
+            question_id: questionId,
+            user_answer: this.getYourAnswer(),
+            is_correct: isCorrect,
+            time_spent: timeSpent,
+            practice_mode: 'review'
+          })
+
+          console.log('✅ 统一API提交成功:', response.data)
+
+          // 更新本地状态缓存
+          if (response.data.state) {
+            unifiedStateStore.questionStates.set(questionId, response.data.state)
+          }
+        } else {
+          // 使用旧版API
+          response = await axios.post(`${API_BASE}/review/submit`, {
+            user_id: this.userId,
+            question_id: questionId,
+            quality: quality
+          })
+
+          console.log('✅ 旧版API提交成功:', response.data)
+        }
 
         // 如果掌握了，显示提示
-        if (response.data.mastered) {
-          this.$message?.success('🎉 恭喜！该题目已掌握')
+        if (response.data.mastered || response.data.supermemo?.removed_from_wrong_book) {
+          alert('🎉 恭喜！该题目已掌握，从错题本移除')
         }
 
         // 更新统计
-        const statsResponse = await axios.get(`${API_BASE}/review/stats/${this.userId}`)
-        this.reviewStats = statsResponse.data
+        await this.loadReviewStats()
 
         this.reviewedCount++
         this.currentIndex++
         this.showQuestion()
       } catch (error) {
         console.error('=== 提交复习失败 ===')
-        console.error('错误类型:', error.name)
-        console.error('错误消息:', error.message)
-        console.error('完整错误:', error)
-        console.error('响应数据:', error.response?.data)
+        console.error('错误:', error)
 
         // 显示详细的错误信息
         let errorMessage = '提交复习失败，请重试'

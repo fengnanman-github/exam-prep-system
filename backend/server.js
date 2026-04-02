@@ -436,6 +436,75 @@ app.use('/api/v2/stats', unifiedStatsApi(pool));
 const smartRecommendationApi = require('./smart-recommendation-api');
 app.use('/api/v2/smart', smartRecommendationApi(pool));
 
+// ==================== 统一核心逻辑API路由 (v2.0.0) ====================
+// 统一状态API
+const unifiedStateRouter = require('./unified-core/unified-state');
+app.use('/api/v2/unified', unifiedStateRouter(pool));
+
+// 统一练习API
+const unifiedPracticeRouter = require('./unified-core/unified-practice');
+app.use('/api/v2/unified', unifiedPracticeRouter(pool));
+
+// 版本管理API
+const { getInstance: getVersionManager } = require('./unified-core/version-manager');
+const versionManager = getVersionManager(pool);
+
+// 初始化版本管理器
+versionManager.initialize().catch(err => {
+    console.error('初始化版本管理器失败:', err);
+});
+
+// 获取版本配置
+app.get('/api/v2/version/config', async (req, res) => {
+    try {
+        const userId = req.query.user_id;
+        const config = versionManager.getConfig();
+
+        // 获取功能启用状态
+        const featuresStatus = userId
+            ? await versionManager.getAllFeaturesStatus(userId)
+            : config.features;
+
+        res.json({
+            version: config.current,
+            features: featuresStatus,
+            legacy: config.legacy
+        });
+    } catch (error) {
+        console.error('获取版本配置失败:', error);
+        res.status(500).json({ error: '获取版本配置失败' });
+    }
+});
+
+// 切换版本（需要管理员权限）
+app.post('/api/v2/version/switch', async (req, res) => {
+    try {
+        const { version } = req.body;
+        const result = await versionManager.switchVersion(version);
+        res.json(result);
+    } catch (error) {
+        console.error('切换版本失败:', error);
+        res.status(500).json({ error: '切换版本失败' });
+    }
+});
+
+// 设置功能开关（需要管理员权限）
+app.post('/api/v2/version/feature/:feature', async (req, res) => {
+    try {
+        const { feature } = req.params;
+        const { is_enabled, enabled_for_users, enabled_percentage } = req.body;
+        const result = await versionManager.setFeature(feature, {
+            is_enabled,
+            enabled_for_users,
+            enabled_percentage
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('设置功能开关失败:', error);
+        res.status(500).json({ error: '设置功能开关失败' });
+    }
+});
+
 // ==================== 考试分类标注（临时端点）====================
 // 考试分类定义
 const EXAM_CATEGORIES = {
