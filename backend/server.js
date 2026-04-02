@@ -11,6 +11,7 @@ const questionAdminApi = require('./question-admin-api');
 const uncertainQuestionsApi = require('./uncertain-questions-api');
 const authRouter = require('./auth/auth-router');
 const { authenticateToken, requireAdmin } = require('./auth/auth-middleware');
+const publicApi = require('./public-api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,9 @@ const pool = new Pool({
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// 公开API路由（无需认证）- 必须在所有路由之前
+app.use('/api/v2/public', publicApi(pool));
 
 // 请求日志中间件
 app.use((req, res, next) => {
@@ -487,6 +491,8 @@ app.post('/api/v2/version/switch', async (req, res) => {
         res.status(500).json({ error: '切换版本失败' });
     }
 });
+
+// 管理员员配置API已整合到question-admin-api中
 
 // 设置功能开关（需要管理员权限）
 app.post('/api/v2/version/feature/:feature', async (req, res) => {

@@ -560,6 +560,282 @@ router.get('/categories', async (req, res) => {
     }
 });
 
+// ==================== 管理员配置管理API ====================
+const { getInstance: getConfigManager } = require('./unified-core/admin-config');
+
+/**
+ * GET /api/v2/admin/system-config
+ * 获取系统配置（无需权限）仅用于配置健康检查
+ */
+router.get('/system-config/health', async (req, res) => {
+    try {
+        const result = await router.pool.query(`
+            SELECT COUNT(*) as config_count
+            FROM admin_config
+            WHERE is_active = true
+        `);
+
+        res.json({
+            success: true,
+            status: 'healthy',
+            config_count: parseInt(result.rows[0].config_count),
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        res.status(500).json({
+            error: '配置健康检查失败',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/v2/admin/system-config
+ * 获取所有配置
+ */
+router.get('/system-config', async (req, res) => {
+    try {
+        const configManager = getConfigManager(router.pool);
+        const configs = await configManager.getAllConfigs();
+
+        res.json({
+            success: true,
+            configs,
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.error('获取配置失败:', error);
+        res.status(500).json({
+            error: '获取配置失败',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * PUT /api/v2/admin/system-config/:key
+ * 更新配置
+ */
+router.put('/system-config/:key', async (req, res) => {
+    try {
+        const { key } = req.params;
+        const { value, reason } = req.body;
+
+        if (value === undefined) {
+            return res.status(400).json({
+                error: '缺少value参数'
+            });
+        }
+
+        const configManager = getConfigManager(router.pool);
+        const result = await configManager.setConfig(
+            key,
+            value,
+            req.user.username,
+            reason
+        );
+
+        res.json({
+            success: true,
+            ...result,
+            message: '配置已更新'
+        });
+    } catch (error) {
+        console.error(`更新配置 ${req.params.key} 失败:`, error);
+        res.status(500).json({
+            error: '更新配置失败',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/v2/admin/system-config/batch
+ * 批量更新配置
+ */
+router.post('/system-config/batch', async (req, res) => {
+    try {
+        const { configs, reason } = req.body;
+
+        if (!configs || typeof configs !== 'object') {
+            return res.status(400).json({
+                error: '缺少configs参数或格式错误'
+            });
+        }
+
+        const configManager = getConfigManager(router.pool);
+        const result = await configManager.setConfigs(
+            configs,
+            req.user.username,
+            reason || '批量更新'
+        );
+
+        res.json({
+            success: true,
+            ...result,
+            message: `成功更新 ${result.updated} 项配置`
+        });
+    } catch (error) {
+        console.error('批量更新配置失败:', error);
+        res.status(500).json({
+            error: '批量更新配置失败',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/v2/admin/question-scopes
+ * 获取所有题目范围配置
+ */
+router.get('/question-scopes', async (req, res) => {
+    try {
+        const configManager = getConfigManager(router.pool);
+        const scopes = {
+            practice: await configManager.getQuestionScope('practice_question_scope'),
+            category: await configManager.getQuestionScope('category_question_scope'),
+            exam_category: await configManager.getQuestionScope('exam_category_scope'),
+            document: await configManager.getQuestionScope('document_question_scope'),
+            random: await configManager.getQuestionScope('random_question_scope')
+        };
+
+        res.json({
+            success: true,
+            scopes,
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.error('获取题目范围失败:', error);
+        res.status(500).json({
+            error: '获取题目范围失败',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * PUT /api/v2/admin/question-scope/:type
+ * 更新题目范围配置
+ */
+router.put('/question-scope/:type', async (req, res) => {
+    try {
+        const { type } = req.params;
+        const config = req.body;
+
+        // 验证类型
+        const validTypes = ['practice', 'category', 'exam_category', 'document', 'random'];
+        if (!validTypes.includes(type)) {
+            return res.status(400).json({
+                error: '无效的题目范围类型',
+                validTypes
+            });
+        }
+
+        // 映射到配置键
+        const keyMap = {
+            practice: 'practice_question_scope',
+            category: 'category_question_scope',
+            exam_category: 'exam_category_scope',
+            document: 'document_question_scope',
+            random: 'random_question_scope'
+        };
+
+        const configManager = getConfigManager(router.pool);
+        const result = await configManager.setConfig(
+            keyMap[type],
+            config,
+            req.user.username,
+            '更新题目范围配置'
+        );
+
+        res.json({
+            success: true,
+            type,
+            config: result.value,
+            message: `${type} 题目范围已更新`
+        });
+    } catch (error) {
+        console.error(`更新题目范围失败:`, error);
+        res.status(500).json({
+            error: '更新题目范围失败',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/v2/admin/document-scopes
+ * 获取所有文档范围配置
+ */
+router.get('/document-scopes', async (req, res) => {
+    try {
+        const configManager = getConfigManager(router.pool);
+        const scopes = {
+            practice: await configManager.getDocumentScope('practice_document_scope'),
+            review: await configManager.getDocumentScope('review_document_scope')
+        };
+
+        res.json({
+            success: true,
+            scopes,
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.error('获取文档范围失败:', error);
+        res.status(500).json({
+            error: '获取文档范围失败',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * PUT /api/v2/admin/document-scope/:type
+ * 更新文档范围配置
+ */
+router.put('/document-scope/:type', async (req, res) => {
+    try {
+        const { type } = req.params;
+        const config = req.body;
+
+        // 验证类型
+        const validTypes = ['practice', 'review'];
+        if (!validTypes.includes(type)) {
+            return res.status(400).json({
+                error: '无效的文档范围类型',
+                validTypes
+            });
+        }
+
+        // 映射到配置键
+        const keyMap = {
+            practice: 'practice_document_scope',
+            review: 'review_document_scope'
+        };
+
+        const configManager = getConfigManager(router.pool);
+        const result = await configManager.setConfig(
+            keyMap[type],
+            config,
+            req.user.username,
+            '更新文档范围配置'
+        );
+
+        res.json({
+            success: true,
+            type,
+            config: result.value,
+            message: `${type} 文档范围已更新`
+        });
+    } catch (error) {
+        console.error(`更新文档范围失败:`, error);
+        res.status(500).json({
+            error: '更新文档范围失败',
+            details: error.message
+        });
+    }
+});
+
 module.exports = (pool) => {
     // 将数据库连接池附加到路由器
     router.pool = pool;
