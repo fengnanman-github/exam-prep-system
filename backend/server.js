@@ -13,6 +13,11 @@ const authRouter = require('./auth/auth-router');
 const { authenticateToken, requireAdmin } = require('./auth/auth-middleware');
 const publicApi = require('./public-api');
 
+// 监控和分析
+const performanceMonitor = require('./middleware/performance-monitor');
+const errorTracker = require('./middleware/error-tracker');
+const monitoringApi = require('./monitoring-api');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -29,6 +34,9 @@ const pool = new Pool({
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// 性能监控中间件
+app.use(performanceMonitor.middleware());
 
 // 公开API路由（无需认证）- 必须在所有路由之前
 app.use('/api/v2/public', publicApi(pool));
@@ -439,6 +447,21 @@ app.use('/api/v2/stats', unifiedStatsApi(pool));
 // 智能推荐API路由
 const smartRecommendationApi = require('./smart-recommendation-api');
 app.use('/api/v2/smart', smartRecommendationApi(pool));
+
+// 监控和分析API路由
+app.use('/api/v2/monitoring', monitoringApi(pool));
+
+// 功能扩展API路由（成就、提醒、导出）
+const extendedFeaturesApi = require('./extended-features-api');
+app.use('/api/v2', extendedFeaturesApi(pool));
+
+// 数据扩充API路由（统计、质量检查、扩充建议）
+const dataExpansionApi = require('./data-expansion-api');
+app.use('/api/v2/data', dataExpansionApi(pool));
+
+// 增强智能推荐API路由（自动化功能）
+const smartRecommendationEnhancedApi = require('./unified-core/smart-recommendation-enhanced');
+app.use('/api/v2/smart-enhanced', smartRecommendationEnhancedApi(pool));
 
 // ==================== 统一核心逻辑API路由 (v2.0.0) ====================
 // 统一状态API
@@ -860,14 +883,8 @@ app.use((req, res) => {
     });
 });
 
-// 全局错误处理
-app.use((err, req, res, next) => {
-    console.error('服务器错误:', err);
-    res.status(500).json({
-        error: '服务器内部错误',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-});
+// 全局错误处理（使用错误追踪器）
+app.use(errorTracker.middleware());
 
 // 启动服务器
 app.listen(PORT, '0.0.0.0', () => {
