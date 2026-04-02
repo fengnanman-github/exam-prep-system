@@ -217,6 +217,7 @@
 
 <script>
 import axios from 'axios'
+import { versionConfig } from '../config/version-config'
 
 const API_BASE = '/api/v2/documents'
 
@@ -238,10 +239,21 @@ export default {
         excludePracticed: false,
         randomOrder: true,
         limit: 20
-      }
+      },
+      // 统一API支持
+      useUnifiedAPI: false
     }
   },
-  mounted() {
+  async mounted() {
+    // 检查版本配置
+    try {
+      await versionConfig.init()
+      this.useUnifiedAPI = versionConfig.useUnifiedAPI()
+      console.log('DocumentReview: 统一API状态', this.useUnifiedAPI)
+    } catch (error) {
+      console.error('检查版本配置失败:', error)
+      this.useUnifiedAPI = false
+    }
     this.loadData()
   },
   methods: {

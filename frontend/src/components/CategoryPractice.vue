@@ -233,6 +233,8 @@
 
 <script>
 import api from '../utils/api'
+import { unifiedStateStore } from '../stores/unifiedState'
+import { versionConfig } from '../config/version-config'
 
 const API_BASE = '/api/v2'
 
@@ -253,7 +255,9 @@ export default {
       questionStartTime: null,
       selectedOptions: [],
       correctCount: 0,
-      wrongCount: 0
+      wrongCount: 0,
+      // 统一API支持
+      useUnifiedAPI: false
     }
   },
   props: {
@@ -279,9 +283,21 @@ export default {
     categoryWrongCount() {
       // 返回当前会话的错题数
       return this.wrongCount
+    },
+    isUnifiedEnabled() {
+      return this.useUnifiedAPI && versionConfig.isFeatureEnabled('unifiedSuperMemo')
     }
   },
   async mounted() {
+    // 检查版本配置
+    try {
+      await versionConfig.init()
+      this.useUnifiedAPI = versionConfig.useUnifiedAPI()
+      console.log('CategoryPractice: 统一API状态', this.useUnifiedAPI)
+    } catch (error) {
+      console.error('检查版本配置失败:', error)
+      this.useUnifiedAPI = false
+    }
     await this.loadCategories()
   },
   methods: {
@@ -429,23 +445,46 @@ export default {
 
       this.showResult = true
 
-      // 记录练习历史
+      // 记录练习历史（使用统一API或旧API）
       try {
-        await api.post(`${API_BASE}/practice/history`, {
-          user_id: this.userId,
-          question_id: this.currentQuestion.id,
-          user_answer: answer,
-          is_correct: this.isCorrect,
-          time_spent: timeSpent,
-          practice_mode: 'category'
-        })
-
-        if (!this.isCorrect) {
-          await api.post(`/api/wrong-answers`, {
+        if (this.isUnifiedEnabled) {
+          // 使用统一API
+          const response = await api.post(`${API_BASE}/unified/practice/submit`, {
+            user_id: this.userId,
             question_id: this.currentQuestion.id,
-            user_id: this.userId
+            user_answer: answer,
+            is_correct: this.isCorrect,
+            time_spent: timeSpent,
+            practice_mode: 'category'
           })
-          this.$emit('wrong-answer-recorded')
+
+          // 更新本地状态缓存
+          if (response.data && response.data.state) {
+            unifiedStateStore.questionStates.set(this.currentQuestion.id, response.data.state)
+          }
+
+          // 统一API已经处理了错题记录
+          if (!this.isCorrect) {
+            this.$emit('wrong-answer-recorded')
+          }
+        } else {
+          // 使用旧API
+          await api.post(`${API_BASE}/practice/history`, {
+            user_id: this.userId,
+            question_id: this.currentQuestion.id,
+            user_answer: answer,
+            is_correct: this.isCorrect,
+            time_spent: timeSpent,
+            practice_mode: 'category'
+          })
+
+          if (!this.isCorrect) {
+            await api.post(`/api/wrong-answers`, {
+              question_id: this.currentQuestion.id,
+              user_id: this.userId
+            })
+            this.$emit('wrong-answer-recorded')
+          }
         }
 
         this.$emit('update-stats')

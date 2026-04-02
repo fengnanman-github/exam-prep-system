@@ -334,6 +334,8 @@ class="btn btn-secondary"
 
 <script>
 import axios from 'axios'
+import { unifiedStateStore } from '../stores/unifiedState'
+import { versionConfig } from '../config/version-config'
 
 const API_BASE = '/api/v2'
 
@@ -405,18 +407,34 @@ practiceModes: [
 { id: '判断题', name: '判断题', icon: '✅' },
 { id: '单选题', name: '单选题', icon: '🔘' },
 { id: '多选题', name: '多选题', icon: '☑️' }
-]
+],
+
+// 统一API支持
+useUnifiedAPI: false
 }
 },
 
 computed: {
 hasActiveFilters() {
-return this.selectedLawCategory || this.selectedTechCategory ||
-this.selectedDifficulty || this.practiceType !== 'random'
+  return this.selectedLawCategory || this.selectedTechCategory ||
+        this.selectedDifficulty || this.practiceType !== 'random'
+},
+isUnifiedEnabled() {
+  return this.useUnifiedAPI && versionConfig.isFeatureEnabled('unifiedSuperMemo')
 }
 },
 
 async mounted() {
+// 检查版本配置
+try {
+  await versionConfig.init()
+  this.useUnifiedAPI = versionConfig.useUnifiedAPI()
+  console.log('PracticeMode: 统一API状态', this.useUnifiedAPI)
+} catch (error) {
+  console.error('检查版本配置失败:', error)
+  this.useUnifiedAPI = false
+}
+
 await this.loadCategories()
 
 // 检查是否有文档练习题目
@@ -634,56 +652,82 @@ const timeSpent = Math.round((Date.now() - this.questionStartTime) / 1000)
 
 // 判断正确性
 if (this.currentQuestion.question_type === '多项选择题') {
-// 多选题：比较排序后的答案
-const userAnswerSorted = this.selectedOptions.sort().join('')
-const correctAnswerSorted = this.currentQuestion.correct_answer.split('').sort().join('')
-this.isCorrect = userAnswerSorted === correctAnswerSorted
+  // 多选题：比较排序后的答案
+  const userAnswerSorted = this.selectedOptions.sort().join('')
+  const correctAnswerSorted = this.currentQuestion.correct_answer.split('').sort().join('')
+  this.isCorrect = userAnswerSorted === correctAnswerSorted
 } else {
-// 单选题和判断题：直接比较
-this.isCorrect = answer === this.currentQuestion.correct_answer
+  // 单选题和判断题：直接比较
+  this.isCorrect = answer === this.currentQuestion.correct_answer
 }
 
 this.showResult = true
 
 // 记录到题目历史（用于返回上一题）
 this.questionHistory.push({
-question: this.currentQuestion,
-userAnswer: answer,
-isCorrect: this.isCorrect,
-selectedOptions: [...this.selectedOptions],
-timeSpent
+  question: this.currentQuestion,
+  userAnswer: answer,
+  isCorrect: this.isCorrect,
+  selectedOptions: [...this.selectedOptions],
+  timeSpent
 })
 this.currentHistoryIndex = this.questionHistory.length - 1
 this.canGoBack = this.currentHistoryIndex > 0
 
-// 记录练习历史
+// 记录练习历史（使用统一API或旧API）
 try {
-await axios.post(`${API_BASE}/practice/history`, {
-user_id: this.userId,
-question_id: this.currentQuestion.id,
-user_answer: answer,
-is_correct: this.isCorrect,
-time_spent: timeSpent,
-practice_mode: 'quick'
-})
+  if (this.isUnifiedEnabled) {
+    // 使用统一API
+    const response = await axios.post(`${API_BASE}/unified/practice/submit`, {
+      user_id: this.userId,
+      question_id: this.currentQuestion.id,
+      user_answer: answer,
+      is_correct: this.isCorrect,
+      time_spent: timeSpent,
+      practice_mode: this.practiceType === 'random' ? 'quick' : this.practiceType
+    })
+
+    // 更新本地状态缓存
+    if (response.data && response.data.state) {
+      unifiedStateStore.questionStates.set(this.currentQuestion.id, response.data.state)
+    }
+  } else {
+    // 使用旧API
+    await axios.post(`${API_BASE}/practice/history`, {
+      user_id: this.userId,
+      question_id: this.currentQuestion.id,
+      user_answer: answer,
+      is_correct: this.isCorrect,
+      time_spent: timeSpent,
+      practice_mode: 'quick'
+    })
+  }
 } catch (error) {
-console.error('记录练习历史失败:', error)
+  console.error('记录练习历史失败:', error)
 }
 
 // 如果答错，记录到错题本并加载笔记
 if (!this.isCorrect) {
-try {
-await axios.post(`/api/wrong-answers`, {
-question_id: this.currentQuestion.id,
-user_id: this.userId
-})
-this.$emit('wrong-answer-recorded')
-} catch (error) {
-console.error('记录错题失败:', error)
-}
+  try {
+    if (this.isUnifiedEnabled) {
+      // 统一API已经处理了错题记录，这里只需要加载笔记
+      await this.loadNote()
+    } else {
+      // 旧API需要手动记录错题
+      await axios.post(`/api/wrong-answers`, {
+        question_id: this.currentQuestion.id,
+        user_id: this.userId
+      })
+      this.$emit('wrong-answer-recorded')
+      // 只在答错时加载笔记
+      await this.loadNote()
+    }
+  } catch (error) {
+    console.error('记录错题失败:', error)
+  }
 
-// 只在答错时加载笔记
-await this.loadNote()
+  // 只在答错时加载笔记（旧API或统一API都需要）
+  await this.loadNote()
 }
 },
 

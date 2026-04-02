@@ -25,7 +25,12 @@
       "Write:.claude/**",
       "Bash(bash /home/hduser/exam-prep-system-package-20260330/.claude/skills/list-users.sh)",
       "WebSearch",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(python3:*)",
+      "Bash(printf:*)"
     ]
   },
   "projectContext": {
