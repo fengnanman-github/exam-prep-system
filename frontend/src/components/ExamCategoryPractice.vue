@@ -183,6 +183,8 @@
 
 <script>
 import api from '../utils/api'
+import { unifiedStateStore } from '../stores/unifiedState'
+import { versionConfig } from '../config/version-config'
 
 const API_BASE = '/api/v2'
 
@@ -234,17 +236,23 @@ export default {
       showAnswerResult: false,
       isCorrect: false,
       correctCount: 0,
-      wrongCount: 0
+      wrongCount: 0,
+      // 统一API相关
+      useUnifiedAPI: false,
+      answerStartTime: null
     }
   },
   computed: {
     userId() {
-      return this.$root.authStore?.user?.id || 'exam_user_001'
+      return this.$root.authStore?.getCurrentUserId() || 'exam_user_001'
+    },
+    isUnifiedEnabled() {
+      return this.useUnifiedAPI && versionConfig.isFeatureEnabled('unifiedSuperMemo')
     },
     sortedCategories() {
       // 计算优先级分数并排序
       return this.categories.map(cat => {
-        const completionRate = cat.practiced / cat.total
+        const completionRate = cat.total > 0 ? cat.practiced / cat.total : 0
         const accuracy = cat.accuracy || 0
         const examWeight = EXAM_CATEGORIES[cat.category]?.weight || 0.1
 
@@ -260,19 +268,53 @@ export default {
     }
   },
   async mounted() {
+    // 检查版本配置
+    await this.checkVersionConfig()
     await this.loadCategories()
   },
   methods: {
+    async checkVersionConfig() {
+      try {
+        await versionConfig.init()
+        this.useUnifiedAPI = versionConfig.useUnifiedAPI()
+        console.log('统一API状态:', this.useUnifiedAPI)
+      } catch (error) {
+        console.error('检查版本配置失败:', error)
+        this.useUnifiedAPI = false
+      }
+    },
+
     async loadCategories() {
       try {
-        const response = await api.get(`/api/v2/stats/user/${this.userId}`)
-        this.categories = response.data.by_exam_category || []
+        if (this.isUnifiedEnabled) {
+          // 使用统一统计API
+          const stats = await unifiedStateStore.getUserStats()
+          if (stats && stats.by_category) {
+            this.categories = stats.by_category.map(cat => ({
+              category: cat.exam_category,
+              total: cat.total_practiced + cat.total_wrong,
+              practiced: cat.total_practiced,
+              accuracy: cat.total_practiced > 0 ? cat.correct / cat.total_practiced : 0
+            }))
+          } else {
+            // 回退到旧API
+            await this.loadCategoriesLegacy()
+          }
+        } else {
+          await this.loadCategoriesLegacy()
+        }
       } catch (error) {
         console.error('加载类别失败:', error)
-        alert('加载失败，请重试')
+        // 尝试使用旧API
+        await this.loadCategoriesLegacy()
       } finally {
         this.loading = false
       }
+    },
+
+    async loadCategoriesLegacy() {
+      const response = await api.get(`/api/v2/stats/user/${this.userId}`)
+      this.categories = response.data.by_exam_category || []
     },
     getCategoryIcon(category) {
       return EXAM_CATEGORIES[category]?.icon || '📄'
@@ -321,6 +363,8 @@ export default {
       this.currentQuestion = this.questions[this.currentIndex]
       this.selectedAnswer = null
       this.showAnswerResult = false
+      // 开始计时
+      this.answerStartTime = Date.now()
     },
     getQuestionTypeLabel(type) {
       const labels = {
@@ -363,11 +407,30 @@ export default {
 
       // 记录练习历史
       try {
-        await api.post(`${API_BASE}/practice/history`, {
-          user_id: this.userId,
-          question_id: this.currentQuestion.id,
-          is_correct: isCorrect
-        })
+        if (this.isUnifiedEnabled) {
+          // 使用统一API
+          const timeSpent = this.answerStartTime ? Math.round((Date.now() - this.answerStartTime) / 1000) : 0
+          const response = await api.post(`${API_BASE}/unified/practice/submit`, {
+            user_id: this.userId,
+            question_id: this.currentQuestion.id,
+            user_answer: this.selectedAnswer === '正确' ? 'A' : (this.selectedAnswer === '错误' ? 'B' : this.selectedAnswer),
+            is_correct: isCorrect,
+            time_spent: timeSpent,
+            practice_mode: 'exam_category'
+          })
+
+          // 更新本地状态缓存
+          if (response.data.state) {
+            unifiedStateStore.questionStates.set(this.currentQuestion.id, response.data.state)
+          }
+        } else {
+          // 使用旧API
+          await api.post(`${API_BASE}/practice/history`, {
+            user_id: this.userId,
+            question_id: this.currentQuestion.id,
+            is_correct: isCorrect
+          })
+        }
       } catch (error) {
         console.error('记录练习失败:', error)
       }
