@@ -651,6 +651,24 @@ app.post('/api/v2/label-exam-category', async (req, res) => {
   }
 });
 
+// 获取考试分类列表
+app.get('/api/v2/questions/exam-categories', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT exam_category
+      FROM questions
+      WHERE exam_category IS NOT NULL
+      ORDER BY exam_category
+    `);
+
+    const categories = result.rows.map(row => row.exam_category);
+    res.json({ categories });
+  } catch (error) {
+    console.error('获取考试分类失败:', error);
+    res.status(500).json({ error: '获取考试分类失败' });
+  }
+});
+
 // 获取考试分类统计
 app.get('/api/v2/exam-categories/stats', async (req, res) => {
   try {

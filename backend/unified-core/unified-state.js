@@ -514,8 +514,8 @@ module.exports = (pool) => {
                     COUNT(*) FILTER (WHERE ph.is_correct) as correct_count,
                     COUNT(*) FILTER (WHERE NOT ph.is_correct) as wrong_count,
                     ROUND(
-                        COUNT(*) FILTER (WHERE ph.is_correct)::float /
-                        NULLIF(COUNT(*), 0) * 100,
+                        CAST(COUNT(*) FILTER (WHERE ph.is_correct) AS numeric) /
+                        NULLIF(CAST(COUNT(*) AS numeric), 0) * 100,
                         2
                     ) as accuracy_rate,
                     MAX(ph.practiced_at) as last_practice_time

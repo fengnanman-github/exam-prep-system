@@ -97,14 +97,31 @@ export default {
     // 加载配置数据
     const loadConfigs = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('exam_auth_token');
+        console.log('Token exists:', !!token);
+        console.log('Token length:', token?.length);
+
+        if (!token) {
+          console.error('未找到认证token');
+          alert('请先登录');
+          return;
+        }
+
         const headers = { Authorization: `Bearer ${token}` };
 
         // 加载题目范围配置
+        console.log('正在加载题目范围配置...');
         const scopesRes = await fetch('/api/v2/admin/question-scopes', { headers });
+        console.log('题目范围API响应状态:', scopesRes.status);
+
         if (scopesRes.ok) {
           const data = await scopesRes.json();
+          console.log('题目范围数据:', data);
           questionScopes.value = data.scopes || {};
+        } else {
+          const errorData = await scopesRes.json();
+          console.error('题目范围API错误:', errorData);
+          alert('加载题目范围配置失败: ' + (errorData.error || '未知错误'));
         }
 
         // 加载文档范围配置
@@ -132,7 +149,7 @@ export default {
     // 加载元数据
     const loadMetadata = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('exam_auth_token');
         const headers = { Authorization: `Bearer ${token}` };
 
         // 加载知识点分类
@@ -161,7 +178,7 @@ export default {
     // 更新题目范围配置
     const updateQuestionScope = async (type, config) => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('exam_auth_token');
         const response = await fetch(`/api/v2/admin/question-scope/${type}`, {
           method: 'PUT',
           headers: {
@@ -187,7 +204,7 @@ export default {
     // 更新文档范围配置
     const updateDocumentScope = async (type, config) => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('exam_auth_token');
         const response = await fetch(`/api/v2/admin/document-scope/${type}`, {
           method: 'PUT',
           headers: {
@@ -213,7 +230,7 @@ export default {
     // 更新自动规则
     const updateAutoRule = async (rule, enabled) => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('exam_auth_token');
         const response = await fetch(`/api/v2/admin/system-config/${rule}`, {
           method: 'PUT',
           headers: {

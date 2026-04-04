@@ -836,6 +836,64 @@ router.put('/document-scope/:type', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/v2/questions/by-ids
+ * 根据题号列表获取题目（用于专项练习）
+ */
+router.get('/by-ids', async (req, res) => {
+    try {
+        const { ids } = req.query;
+
+        if (!ids) {
+            return res.status(400).json({ error: '请提供题号列表' });
+        }
+
+        // 解析题号列表（支持逗号分隔或数组）
+        const idList = Array.isArray(ids) ? ids : ids.split(',').map(id => id.trim());
+
+        // 验证题号格式
+        const validIds = idList.filter(id => {
+            const num = parseInt(id);
+            return !isNaN(num) && num > 0;
+        });
+
+        if (validIds.length === 0) {
+            return res.status(400).json({ error: '无效的题号列表' });
+        }
+
+        // 查询题目（使用IN子句）
+        const query = `
+            SELECT
+                q.*,
+                CASE WHEN ph.id IS NOT NULL THEN 'practiced' ELSE 'new' END as practice_status,
+                ph.is_correct as last_correct,
+                ph.practiced_at as last_practiced_at
+            FROM questions q
+            LEFT JOIN (
+                SELECT DISTINCT ON (question_id)
+                    question_id,
+                    is_correct,
+                    practiced_at
+                FROM practice_history
+                WHERE user_id = $1
+                ORDER BY practiced_at DESC
+            ) ph ON q.id = ph.question_id
+            WHERE q.id = ANY($2::int[])
+            ORDER BY q.id
+        `;
+
+        const result = await router.pool.query(query, [req.user?.id || 'exam_user_001', validIds]);
+
+        res.json({
+            total: result.rows.length,
+            questions: result.rows
+        });
+    } catch (error) {
+        console.error('根据题号获取题目失败:', error);
+        res.status(500).json({ error: '获取题目失败' });
+    }
+});
+
 module.exports = (pool) => {
     // 将数据库连接池附加到路由器
     router.pool = pool;

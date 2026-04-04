@@ -269,81 +269,37 @@ class="btn-submit-multi"
 <div class="explanation-content">{{ currentQuestion.explanation }}</div>
 </div>
 
-<!-- 操作按钮：收藏和笔记 -->
-<div v-if="showResult" class="action-buttons">
-	<!-- 收藏按钮 -->
-	<button
-		@click="toggleFavorite"
-		class="btn-favorite"
-		:class="{ active: isFavorite }"
-		:title="isFavorite ? '取消收藏' : '收藏本题'"
-	>
-		{{ isFavorite ? '⭐ 已收藏' : '☆ 收藏本题' }}
-	</button>
-
-	<!-- 笔记按钮 -->
-	<button
-		@click="showNoteInput = !showNoteInput"
-		class="btn-note"
-		:class="{ active: showNoteInput || currentNote }"
-	>
-		{{ showNoteInput || currentNote ? '📝 编辑笔记 (支持Markdown)' : '📝 添加笔记 (支持Markdown)' }}
-	</button>
-</div>
-
-<!-- 笔记输入区域（支持Markdown） -->
+<!-- 笔记功能 - 仅在答错时显示 -->
+<div v-if="!isCorrect" class="note-section">
+<button
+@click="showNoteInput = !showNoteInput"
+class="btn-note"
+:class="{ active: showNoteInput || currentNote }"
+>
+{{ showNoteInput || currentNote ? '📝 编辑笔记' : '📝 添加笔记' }}
+</button>
 <div v-if="showNoteInput" class="note-input-area">
-	<!-- Markdown语法提示 -->
-	<div class="markdown-hint">
-		<span class="hint-title">💡 支持Markdown语法：</span>
-		<span class="hint-examples">
-			**粗体** *斜体* `代码` # 标题 - 列表 > 引用
-		</span>
-		<button @click="showPreview = !showPreview" class="btn-toggle-preview">
-			{{ showPreview ? '编辑' : '预览' }}
-		</button>
-	</div>
-
-	<!-- 编辑模式 -->
-	<textarea
-		v-if="!showPreview"
-		v-model="currentNote"
-		placeholder="记录笔记、解题思路、重要知识点...
-
-支持Markdown语法：
-- **粗体** 或 __粗体__
-- *斜体* 或 _斜体_
-- `代码`
-- # 标题
-- - 无序列表
-- 1. 有序列表
-- > 引用
-- [链接](url)"
-		class="note-textarea"
-		rows="6"
-	></textarea>
-
-	<!-- 预览模式 -->
-	<div v-else class="note-preview">
-		<MarkdownRenderer :content="currentNote" />
-	</div>
-
-	<div class="note-actions">
-		<button
-			@click="saveNote"
-			:disabled="savingNote || !currentNote.trim()"
-			class="btn-save-note"
-		>
-			{{ savingNote ? '保存中...' : '保存笔记' }}
-		</button>
-		<button @click="showNoteInput = false" class="btn-cancel-note">取消</button>
-	</div>
+<textarea
+v-model="currentNote"
+placeholder="记录你的错题笔记、易错点、重要知识点..."
+class="note-textarea"
+rows="3"
+></textarea>
+<div class="note-actions">
+<button
+@click="saveNote"
+:disabled="savingNote || !currentNote.trim()"
+class="btn-save-note"
+>
+{{ savingNote ? '保存中...' : '保存笔记' }}
+</button>
+<button @click="showNoteInput = false; currentNote = ''" class="btn-cancel-note">取消</button>
 </div>
-
-<!-- 笔记显示区域（使用Markdown渲染） -->
+</div>
 <div v-else-if="currentNote && !showNoteInput" class="note-display">
-	<MarkdownRenderer :content="currentNote" />
-	<button @click="showNoteInput = true; showPreview = false" class="btn-edit-note">修改笔记</button>
+{{ currentNote }}
+<button @click="showNoteInput = true" class="btn-edit-note">修改</button>
+</div>
 </div>
 
 <!-- 按钮组 -->
@@ -378,14 +334,12 @@ class="btn btn-secondary"
 
 <script>
 import axios from 'axios'
-import MarkdownRenderer from './MarkdownRenderer.vue'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 
 const API_BASE = '/api/v2'
 
 export default {
-components: { MarkdownRenderer },
 name: 'PracticeMode',
 emits: ['wrong-answer-recorded', 'back', 'back-to-document'],
 data() {
@@ -446,10 +400,6 @@ categoryStats: null,
 showNoteInput: false,
 currentNote: '',
 savingNote: false,
-showPreview: false,
-	
-	// 收藏功能
-	isFavorite: false,
 
 // 练习模式
 practiceModes: [
@@ -549,6 +499,46 @@ this.practiceType = type
 await this.loadQuestion()
 },
 
+async loadQuestion() {
+this.loading = true
+try {
+const params = { user_id: this.userId }
+
+// 添加两级分类筛选
+if (this.selectedLawCategory) {
+params.law_category = this.selectedLawCategory
+}
+if (this.selectedTechCategory) {
+params.tech_category = this.selectedTechCategory
+}
+if (this.selectedDifficulty) {
+params.difficulty = this.selectedDifficulty
+}
+if (this.practiceType !== 'random') {
+params.type = this.practiceType
+}
+
+const response = await axios.get(`${API_BASE}/questions`, { params })
+this.currentQuestion = response.data
+this.showResult = false
+this.questionStartTime = Date.now()
+
+// 重置答案和提示状态
+this.userAnswer = null
+this.selectedOptions = []
+this.resetHint()
+} catch (error) {
+console.error('加载题目失败:', error)
+if (error.response?.status === 404) {
+// 没有找到题目，检查是否是新题用完了
+await this.checkNewQuestions()
+} else {
+alert('加载题目失败，请重试')
+}
+} finally {
+this.loading = false
+}
+},
 
 // 多选题：切换选项
 toggleOption(key) {
@@ -851,10 +841,6 @@ loadDocumentQuestion(index) {
 
   const question = questions[index]
   this.currentQuestion = question
-	
-	// 加载笔记和收藏状态
-	this.checkFavorite()
-	this.loadNote()
   this.currentQuestionIndex = index
 
   // 更新对应的索引
@@ -915,6 +901,55 @@ showCompletionSummary() {
     this.$emit('back-to-document')
   } else {
     this.$emit('back')
+  }
+},
+
+async loadQuestion() {
+  this.loading = true
+  try {
+    const params = { user_id: this.userId }
+
+    // 添加两级分类筛选
+    if (this.selectedLawCategory) {
+      params.law_category = this.selectedLawCategory
+    }
+    if (this.selectedTechCategory) {
+      params.tech_category = this.selectedTechCategory
+    }
+    if (this.selectedDifficulty) {
+      params.difficulty = this.selectedDifficulty
+    }
+    if (this.practiceType !== 'random') {
+      params.question_type = this.practiceType
+    }
+
+    const response = await axios.get(`${API_BASE}/questions`, { params })
+
+    if (!response.data || response.data.length === 0) {
+      this.currentQuestion = null
+      this.noNewQuestions = true
+      this.newQuestionCheck = await this.checkNewQuestionsAvailable()
+      return
+    }
+
+    this.currentQuestion = response.data
+    this.showResult = false
+    this.selectedAnswer = null
+    this.selectedOptions = []
+    this.isCorrect = false
+    this.questionStartTime = Date.now()
+    this.hintLevel = 0
+    this.hintData = null
+    this.showHint = false
+    this.noNewQuestions = false
+    this.loading = false
+  } catch (error) {
+    console.error('加载题目失败:', error)
+    this.loading = false
+    if (error.response?.status === 404) {
+      this.currentQuestion = null
+      this.noNewQuestions = true
+    }
   }
 },
 
@@ -1152,37 +1187,6 @@ this.savingNote = false
 },
 
 // 加载分类统计
-
-// 切换收藏状态
-async toggleFavorite() {
-  if (!this.currentQuestion) return
-
-  this.isFavorite = !this.isFavorite
-  try {
-    await axios.post(`${API_BASE}/favorite`, {
-      user_id: this.userId,
-      question_id: this.currentQuestion.id,
-      is_favorite: this.isFavorite
-    })
-  } catch (error) {
-    console.error('切换收藏失败:', error)
-    this.isFavorite = !this.isFavorite // 回滚状态
-    alert('操作失败，请重试')
-  }
-},
-
-// 检查收藏状态
-async checkFavorite() {
-  if (!this.currentQuestion) return
-
-  try {
-    const response = await axios.get(`${API_BASE}/favorite/${this.userId}/${this.currentQuestion.id}`)
-    this.isFavorite = response.data.is_favorite || false
-  } catch (error) {
-    console.error('检查收藏状态失败:', error)
-    this.isFavorite = false
-  }
-},
 async loadCategoryStats() {
 try {
 const params = {}
@@ -1233,9 +1237,6 @@ url = `${API_BASE}/questions/practice`
 const response = await axios.get(url, { params })
 this.currentQuestion = response.data
 this.showResult = false
-		// 加载笔记和收藏状态
-		this.checkFavorite()
-		this.loadNote()
 this.questionStartTime = Date.now()
 
 // 重置答案状态
@@ -1930,90 +1931,7 @@ color: #333;
 white-space: pre-wrap;
 }
 
-
-/* Markdown预览和语法提示 */
-.markdown-hint {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 0.5rem;
-	background: #f0f7ff;
-	border-left: 3px solid #1976d2;
-	border-radius: 4px;
-	margin-bottom: 0.75rem;
-	font-size: 0.85rem;
-}
-
-.hint-title {
-	font-weight: 600;
-	color: #1976d2;
-}
-
-.hint-examples {
-	color: #666;
-	font-family: monospace;
-}
-
-.btn-toggle-preview {
-	padding: 0.3rem 0.6rem;
-	background: white;
-	border: 1px solid #1976d2;
-	border-radius: 4px;
-	color: #1976d2;
-	cursor: pointer;
-	font-size: 0.8rem;
-	transition: all 0.2s;
-}
-
-.btn-toggle-preview:hover {
-	background: #1976d2;
-	color: white;
-}
-
-.note-preview {
-	min-height: 120px;
-	padding: 1rem;
-	background: white;
-	border: 1px solid #e0e0e0;
-	border-radius: 4px;
-	overflow-y: auto;
-}
-
 /* 笔记功能 */
-
-/* 操作按钮（收藏和笔记） */
-.action-buttons {
-	display: flex;
-	gap: 1rem;
-	margin: 1.5rem 0;
-	padding-top: 1.5rem;
-	border-top: 1px solid #e0e0e0;
-}
-
-.btn-favorite {
-	padding: 0.6rem 1.2rem;
-	border: 2px solid #ddd;
-	border-radius: 8px;
-	background: white;
-	cursor: pointer;
-	font-size: 0.95rem;
-	transition: all 0.3s;
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.btn-favorite:hover {
-	border-color: #f1c40f;
-	background: #fff9e6;
-}
-
-.btn-favorite.active {
-	border-color: #f1c40f;
-	background: #fff9e6;
-	color: #f39c12;
-}
-
 .note-section {
 margin: 1.5rem 0;
 padding-top: 1.5rem;
@@ -2090,27 +2008,15 @@ font-size: 0.9rem;
 }
 
 .note-display {
-	margin-top: 1rem;
-	padding: 1rem;
-	background: #FFF9E8;
-	border-radius: 4px;
-	font-size: 0.9rem;
-	color: #333;
-}
-
-.note-display :deep(.markdown-renderer) {
-	margin-bottom: 0.5rem;
-}
-
-.note-display .btn-edit-note {
-	padding: 0.4rem 0.8rem;
-	background: #f0f0f0;
-	border: none;
-	border-radius: 4px;
-	color: #666;
-	cursor: pointer;
-	font-size: 0.85rem;
-	transition: all 0.2s;
+margin-top: 1rem;
+padding: 0.75rem;
+background: #FFF9E80;
+border-radius: 4px;
+font-size: 0.9rem;
+color: #333;
+display: flex;
+justify-content: space-between;
+align-items: center;
 }
 
 .btn-edit-note {

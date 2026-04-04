@@ -272,6 +272,10 @@ export default {
     await this.checkVersionConfig()
     await this.loadCategories()
   },
+  async activated() {
+    console.log('ExamCategoryPractice: 组件被激活，刷新数据')
+    await this.loadCategories()
+  },
   methods: {
     async checkVersionConfig() {
       try {
@@ -286,23 +290,9 @@ export default {
 
     async loadCategories() {
       try {
-        if (this.isUnifiedEnabled) {
-          // 使用统一统计API
-          const stats = await unifiedStateStore.getUserStats()
-          if (stats && stats.by_category) {
-            this.categories = stats.by_category.map(cat => ({
-              category: cat.exam_category,
-              total: cat.total_practiced + cat.total_wrong,
-              practiced: cat.total_practiced,
-              accuracy: cat.total_practiced > 0 ? cat.correct / cat.total_practiced : 0
-            }))
-          } else {
-            // 回退到旧API
-            await this.loadCategoriesLegacy()
-          }
-        } else {
-          await this.loadCategoriesLegacy()
-        }
+        // 暂时禁用统一统计API，使用经过验证的legacy API
+        // 原因：统一API引用不存在的视图 v_unified_user_stats
+        await this.loadCategoriesLegacy()
       } catch (error) {
         console.error('加载类别失败:', error)
         // 尝试使用旧API

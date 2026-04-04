@@ -20,9 +20,12 @@ module.exports = (pool) => {
       const baseStatsQuery = `
         SELECT
           COUNT(DISTINCT question_id) as practiced_questions,
-          COUNT(*) FILTER (WHERE is_correct = true) as correct_answers,
-          COUNT(*) FILTER (WHERE is_correct = false) as wrong_answers,
-          ROUND(AVG(CASE WHEN is_correct THEN 1 ELSE 0 END), 4) as accuracy_rate
+          COUNT(DISTINCT question_id) FILTER (WHERE is_correct = true) as correct_answers,
+          COUNT(DISTINCT question_id) FILTER (WHERE is_correct = false) as wrong_answers,
+          ROUND(
+            COUNT(DISTINCT question_id) FILTER (WHERE is_correct = true)::numeric /
+            NULLIF(COUNT(DISTINCT question_id), 0), 4
+          ) as accuracy_rate
         FROM practice_history
         WHERE user_id = $1
       `;
@@ -175,7 +178,7 @@ module.exports = (pool) => {
           total: parseInt(row.total),
           practiced: parseInt(row.practiced),
           correct: parseInt(row.correct),
-          accuracy: row.total > 0 ? (row.correct / row.total) : 0
+          accuracy: row.practiced > 0 ? (row.correct / row.practiced) : 0
         })),
 
         // 文档统计
@@ -186,7 +189,7 @@ module.exports = (pool) => {
           total: parseInt(row.total_questions),
           practiced: parseInt(row.practiced_questions),
           correct: parseInt(row.correct_questions),
-          accuracy: row.total > 0 ? (row.correct_questions / row.total) : 0
+          accuracy: row.practiced_questions > 0 ? (row.correct_questions / row.practiced_questions) : 0
         })),
 
         // 法律法规分类统计
@@ -195,7 +198,7 @@ module.exports = (pool) => {
           total: parseInt(row.total_questions),
           practiced: parseInt(row.practiced_questions),
           correct: parseInt(row.correct_questions),
-          accuracy: row.total > 0 ? (row.correct_questions / row.total) : 0
+          accuracy: row.practiced_questions > 0 ? (row.correct_questions / row.practiced_questions) : 0
         })),
 
         // 技术专业分类统计
@@ -204,7 +207,7 @@ module.exports = (pool) => {
           total: parseInt(row.total_questions),
           practiced: parseInt(row.practiced_questions),
           correct: parseInt(row.correct_questions),
-          accuracy: row.total > 0 ? (row.correct_questions / row.total) : 0
+          accuracy: row.practiced_questions > 0 ? (row.correct_questions / row.practiced_questions) : 0
         })),
 
         // 考试类别统计（密评考试5大类别）
@@ -213,7 +216,7 @@ module.exports = (pool) => {
           total: parseInt(row.total_questions),
           practiced: parseInt(row.practiced_questions),
           correct: parseInt(row.correct_questions),
-          accuracy: row.total_questions > 0 ? (row.correct_questions / row.total_questions) : 0
+          accuracy: row.practiced_questions > 0 ? (row.correct_questions / row.practiced_questions) : 0
         }))
       };
 

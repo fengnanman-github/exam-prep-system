@@ -10,6 +10,27 @@ module.exports = (pool) => {
   const router = express.Router();
 
 /**
+ * GET /api/v2/documents/categories
+ * 获取所有文档分类
+ */
+router.get('/categories', (req, res) => {
+  try {
+    const categories = Object.entries(DOCUMENT_CATEGORIES).map(([name, info]) => ({
+      name,
+      ...info
+    }));
+
+    // 获取唯一的一级分类
+    const uniqueCategories = [...new Set(categories.map(cat => cat.category))];
+
+    res.json(uniqueCategories);
+  } catch (error) {
+    console.error('获取文档分类失败:', error);
+    res.status(500).json({ error: '获取文档分类失败' });
+  }
+});
+
+/**
  * GET /api/v2/documents
  * 获取所有文档列表（按优先级排序）
  */
@@ -47,8 +68,8 @@ router.get('/', async (req, res) => {
         icon: docInfo?.icon || '📄',
         color: docInfo?.color || '#6b7280',
         description: docInfo?.description || '',
-        accuracy: row.total_questions > 0
-          ? Math.round((row.correct_questions / row.total_questions) * 100 * 10) / 10
+        accuracy: row.practiced_questions > 0
+          ? Math.round((row.correct_questions / row.practiced_questions) * 100 * 10) / 10
           : '0.0',
         category_label: docInfo?.category || '其他'
       };
@@ -72,6 +93,9 @@ router.get('/:documentName/questions', async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const excludePracticed = req.query.exclude_practiced === 'true';
 
+    // URL解码
+    const decodedDocumentName = decodeURIComponent(documentName);
+
     let query = `
       SELECT
         q.*,
@@ -83,7 +107,7 @@ router.get('/:documentName/questions', async (req, res) => {
       WHERE q.original_document = $2
     `;
 
-    const params = [userId, documentName];
+    const params = [userId, decodedDocumentName];
 
     if (excludePracticed) {
       query += ` AND NOT EXISTS (
@@ -98,7 +122,40 @@ router.get('/:documentName/questions', async (req, res) => {
 
     params.push(limit);
 
-    const result = await pool.query(query, params);
+    let result = await pool.query(query, params);
+
+    // 如果精确匹配没有结果，尝试模糊匹配（处理文档名称差异）
+    if (result.rows.length === 0) {
+      console.log(`精确匹配未找到文档: ${decodedDocumentName}，尝试模糊匹配`);
+      const fuzzyQuery = `
+        SELECT
+          q.*,
+          EXISTS (
+            SELECT 1 FROM practice_history ph
+            WHERE ph.question_id = q.id AND ph.user_id = $1
+          ) as is_practiced
+        FROM questions q
+        WHERE q.original_document LIKE $2
+      `;
+
+      // 使用模糊匹配（包含文档名称）
+      const fuzzyParams = [userId, `%${decodedDocumentName}%`];
+      const fuzzyLimitIndex = fuzzyParams.length + 1;
+
+      if (excludePracticed) {
+        fuzzyQuery += ` AND NOT EXISTS (
+          SELECT 1 FROM practice_history ph
+          WHERE ph.question_id = q.id AND ph.user_id = $${fuzzyLimitIndex}
+        )`;
+        fuzzyParams.push(userId);
+      }
+
+      fuzzyQuery += ` ORDER BY RANDOM() LIMIT $${fuzzyParams.length + 1}`;
+      fuzzyParams.push(limit);
+
+      result = await pool.query(fuzzyQuery, fuzzyParams);
+      console.log(`模糊匹配找到 ${result.rows.length} 道题目`);
+    }
 
     res.json(result.rows);
   } catch (error) {
@@ -179,8 +236,8 @@ router.get('/stats', async (req, res) => {
       total_questions: total.total_questions,
       practiced_questions: total.practiced_questions,
       correct_questions: total.correct_questions,
-      accuracy: total.total_questions > 0
-        ? ((total.correct_questions / total.total_questions) * 100).toFixed(2)
+      accuracy: total.practiced_questions > 0
+        ? ((total.correct_questions / total.practiced_questions) * 100).toFixed(2)
         : '0.0'
     };
 

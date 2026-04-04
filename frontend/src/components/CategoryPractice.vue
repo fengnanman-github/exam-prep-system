@@ -235,6 +235,7 @@
 import api from '../utils/api'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
+import { PRACTICE, ERROR_MESSAGES } from '../config/constants'
 
 const API_BASE = '/api/v2'
 
@@ -300,6 +301,10 @@ export default {
     }
     await this.loadCategories()
   },
+  async activated() {
+    console.log('CategoryPractice: 组件被激活，刷新数据')
+    await this.loadCategories()
+  },
   methods: {
     async loadCategories() {
       try {
@@ -357,7 +362,7 @@ export default {
         let url = `${API_BASE}/questions`
         const params = {
           user_id: this.userId,
-          limit: 50
+          limit: PRACTICE.DEFAULT_LIMIT * 2 // 类别练习默认加载更多题目
         }
 
         if (this.categoryType === 'law') {
@@ -490,6 +495,14 @@ export default {
         this.$emit('update-stats')
       } catch (error) {
         console.error('记录练习失败:', error)
+        // 显示用户友好的错误提示
+        if (error.response?.status === 401) {
+          alert('登录已过期，请重新登录')
+        } else if (error.response?.status === 500) {
+          alert('服务器错误，请稍后重试')
+        } else {
+          alert('记录答案失败: ' + (error.response?.data?.error || error.message || '未知错误'))
+        }
       }
     },
 

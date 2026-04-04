@@ -485,23 +485,31 @@ module.exports = (pool) => {
 
             let query = `
                 SELECT
-                    id,
-                    question_no,
-                    question_text,
-                    question_type,
-                    category,
-                    exam_category,
-                    law_category,
-                    tech_category,
-                    difficulty,
-                    mastery_level,
-                    next_review_time,
-                    review_interval,
-                    practice_count,
-                    wrong_count,
-                    error_rate
-                FROM v_unified_question_status
-                WHERE review_status = 'due'
+                    uqs.id,
+                    uqs.question_no,
+                    q.question_text,
+                    q.question_type,
+                    q.category,
+                    q.exam_category,
+                    q.law_category,
+                    q.tech_category,
+                    q.difficulty,
+                    uqs.mastery_level,
+                    uqs.next_review_time,
+                    uqs.review_interval,
+                    uqs.practice_count,
+                    uqs.wrong_count,
+                    uqs.error_rate,
+                    uqs.supermemo_review_count as review_count,
+                    q.option_a,
+                    q.option_b,
+                    q.option_c,
+                    q.option_d,
+                    q.correct_answer,
+                    q.explanation
+                FROM v_unified_question_status uqs
+                JOIN questions q ON uqs.id = q.id
+                WHERE uqs.review_status = 'due'
             `;
 
             const params = [];

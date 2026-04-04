@@ -218,11 +218,13 @@
 <script>
 import axios from 'axios'
 import { versionConfig } from '../config/version-config'
+import { API_TIMEOUT, PRACTICE } from '../config/constants'
 
 const API_BASE = '/api/v2/documents'
 
 export default {
   name: 'DocumentReview',
+  emits: ['start-practice'],
   data() {
     return {
       loading: true,
@@ -238,10 +240,20 @@ export default {
       practiceOptions: {
         excludePracticed: false,
         randomOrder: true,
-        limit: 20
+        limit: PRACTICE.DEFAULT_LIMIT
       },
       // 统一API支持
       useUnifiedAPI: false
+    }
+  },
+  async activated() {
+    console.log('🔄 DocumentReview: 组件被激活，开始刷新数据')
+    // 只刷新统计数据，不重新加载整个文档列表（保持筛选状态）
+    try {
+      await this.refreshStats()
+      console.log('✅ DocumentReview: 数据刷新完成')
+    } catch (error) {
+      console.error('❌ DocumentReview: 数据刷新失败', error)
     }
   },
   async mounted() {
@@ -254,15 +266,19 @@ export default {
       console.error('检查版本配置失败:', error)
       this.useUnifiedAPI = false
     }
-    this.loadData()
+    // 首次加载时完全加载（使用标记确保只加载一次）
+    if (!this._hasLoadedInitialData) {
+      this._hasLoadedInitialData = true
+      await this.loadData(true)
+    }
   },
   methods: {
-    async loadData() {
+    async loadData(forceReload = false) {
       this.loading = true
       this.error = null
       try {
         // 优化：只调用一次API，避免重复请求
-        await this.loadAllData()
+        await this.loadAllData(forceReload)
         this.filterDocuments()
       } catch (err) {
         console.error('加载数据失败:', err)
@@ -272,14 +288,29 @@ export default {
       }
     },
     // 优化：合并所有数据加载为一次API调用
-    async loadAllData() {
+    async loadAllData(forceReload = false) {
       const userId = this.getUserId()
 
+      console.log('🔄 开始加载文档数据, forceReload:', forceReload, 'userId:', userId)
+
+      // 添加时间戳避免缓存，特别是在forceReload为true时
+      const timestamp = forceReload ? `?t=${Date.now()}` : ''
+      const cacheBuster = forceReload ? { headers: { 'Cache-Control': 'no-cache' } } : {}
+
       // 只调用一次统一统计API
-      const response = await axios.get(`/api/v2/stats/user/${userId}`, {
-        timeout: 10000 // 10秒超时
+      const response = await axios.get(`/api/v2/stats/user/${userId}${timestamp}`, {
+        timeout: API_TIMEOUT.MEDIUM, // 10秒超时
+        headers: {
+          ...cacheBuster.headers,
+          'Cache-Control': 'no-cache'
+        }
       })
       const stats = response.data
+
+      console.log('📊 收到统计数据:', {
+        total_documents: stats.by_document?.length,
+        sample_document: stats.by_document?.[0]
+      })
 
       // 从统一统计API中提取文档数据（优化：直接使用数据，不重复请求）
       this.documents = stats.by_document.map(doc => ({
@@ -306,6 +337,59 @@ export default {
           practiced_questions: stats.overall.practiced_questions || 0,
           accuracy: Math.round((stats.overall.accuracy_rate || 0) * 100)
         }
+      }
+    },
+    // 只刷新统计数据，不重新加载文档列表（保持筛选状态）
+    async refreshStats() {
+      try {
+        const userId = this.getUserId()
+        const timestamp = `?t=${Date.now()}` // 避免缓存
+
+        const response = await axios.get(`/api/v2/stats/user/${userId}${timestamp}`, {
+          timeout: API_TIMEOUT.MEDIUM,
+          headers: { 'Cache-Control': 'no-cache' }
+        })
+
+        const stats = response.data
+        console.log('📊 刷新统计数据:', {
+          total_documents: stats.by_document?.length,
+          sample_doc: stats.by_document?.[0]
+        })
+
+        // 只更新现有文档的统计数据，不改变文档列表
+        const newStats = {}
+        stats.by_document.forEach(doc => {
+          newStats[doc.document_name] = {
+            practiced_questions: parseInt(doc.practiced) || 0,
+            correct_questions: parseInt(doc.correct) || 0,
+            accuracy: doc.total > 0 ? Math.round((doc.correct / doc.total) * 100 * 10) / 10 : '0.0'
+          }
+        })
+
+        // 使用 Vue.set 或 this.$set 确保响应式更新
+        this.documents.forEach((doc, index) => {
+          if (newStats[doc.document_name]) {
+            this.$set(this.documents, index, {
+              ...doc,
+              practiced_questions: newStats[doc.document_name].practiced_questions,
+              correct_questions: newStats[doc.document_name].correct_questions,
+              accuracy: newStats[doc.document_name].accuracy
+            })
+          }
+        })
+
+        // 重新应用筛选
+        this.filterDocuments()
+
+        // 强制更新视图
+        this.$forceUpdate()
+
+        console.log('✅ 统计数据已刷新', {
+          documents_count: this.documents.length,
+          filtered_count: this.filteredDocuments.length
+        })
+      } catch (error) {
+        console.error('❌ 刷新统计数据失败:', error)
       }
     },
     filterDocuments() {
@@ -410,17 +494,29 @@ export default {
         }
 
         // 跳转到练习页面
-        this.$parent.currentView = 'practice'
+        this.$emit('start-practice')
 
         this.closePracticeModal()
       } catch (err) {
         console.error('获取题目失败:', err)
-        alert('获取题目失败: ' + (err.response?.data?.error || err.message))
+        let errorMessage = '获取题目失败'
+        if (err.response?.status === 401) {
+          errorMessage = '登录已过期，请重新登录'
+        } else if (err.response?.status === 404) {
+          errorMessage = '文档不存在或已被删除'
+        } else if (err.response?.status === 500) {
+          errorMessage = '服务器错误，请稍后重试'
+        } else if (err.response?.data?.error) {
+          errorMessage = err.response.data.error
+        } else if (err.message) {
+          errorMessage = err.message
+        }
+        alert(errorMessage)
       }
     },
     getUserId() {
-      // 从 authStore 获取用户ID
-      return this.$root.authStore?.user?.id || 'exam_user_001'
+      // 从 authStore 获取用户ID，与 App.vue 的 currentUserId 保持一致
+      return this.$root.authStore?.user?.username || 'exam_user_001'
     },
     // 文档图标
     getDocumentIcon(category) {
@@ -551,10 +647,20 @@ export default {
         }
 
         // 跳转到练习页面
-        this.$parent.currentView = 'practice'
+        this.$emit('start-practice')
       } catch (err) {
         console.error('获取类别题目失败:', err)
-        alert('获取题目失败: ' + (err.response?.data?.error || err.message))
+        let errorMessage = '获取类别题目失败'
+        if (err.response?.status === 401) {
+          errorMessage = '登录已过期，请重新登录'
+        } else if (err.response?.status === 500) {
+          errorMessage = '服务器错误，请稍后重试'
+        } else if (err.response?.data?.error) {
+          errorMessage = err.response.data.error
+        } else if (err.message) {
+          errorMessage = err.message
+        }
+        alert(errorMessage)
       }
     },
     async startCategoryNewPractice() {
@@ -601,10 +707,20 @@ export default {
         }
 
         // 跳转到练习页面
-        this.$parent.currentView = 'practice'
+        this.$emit('start-practice')
       } catch (err) {
         console.error('获取类别题目失败:', err)
-        alert('获取题目失败: ' + (err.response?.data?.error || err.message))
+        let errorMessage = '获取类别题目失败'
+        if (err.response?.status === 401) {
+          errorMessage = '登录已过期，请重新登录'
+        } else if (err.response?.status === 500) {
+          errorMessage = '服务器错误，请稍后重试'
+        } else if (err.response?.data?.error) {
+          errorMessage = err.response.data.error
+        } else if (err.message) {
+          errorMessage = err.message
+        }
+        alert(errorMessage)
       }
     }
   },

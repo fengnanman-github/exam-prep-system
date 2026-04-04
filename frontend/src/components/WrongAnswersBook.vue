@@ -9,15 +9,18 @@
 
     <div v-if="wrongAnswers.length > 0" class="wrong-list">
       <div v-for="item in wrongAnswers" :key="item.id" class="wrong-item">
-        <div class="wrong-question">
-          <h4>题目 {{ item.question_no }} ({{ item.question_type }})</h4>
+        <div class="wrong-question" @click="practiceQuestion(item.question_id)" style="cursor: pointer;">
+          <h4>题目 {{ item.question_no }} ({{ item.question_type }}) <span class="click-hint">🖱️ 点击练习</span></h4>
           <p>{{ item.question_text }}</p>
           <div class="wrong-meta">
             <span>错误次数: {{ item.wrong_count }}</span>
             <span>下次复习: {{ formatDate(item.next_review_time) }}</span>
           </div>
         </div>
-        <button @click="removeWrongAnswer(item.question_id)" class="btn small">✅ 已掌握</button>
+        <div class="wrong-actions">
+          <button @click.stop="practiceQuestion(item.question_id)" class="btn small primary-btn">▶️ 练习</button>
+          <button @click.stop="removeWrongAnswer(item.question_id)" class="btn small success-btn">✅ 已掌握</button>
+        </div>
       </div>
     </div>
 
@@ -34,7 +37,7 @@ const API_BASE = '/api'
 
 export default {
   name: 'WrongAnswersBook',
-  emits: ['wrong-answer-removed'],
+  emits: ['wrong-answer-removed', 'start-practice'],
   data() {
     return {
       wrongAnswers: [],
@@ -58,6 +61,18 @@ export default {
         this.wrongStats = response.data
       } catch (error) {
         console.error('加载错题统计失败:', error)
+      }
+    },
+
+    practiceQuestion(questionId) {
+      // 修复：传递question_no而不是question_id，因为CustomPractice需要题目编号
+      // question_id是数据库内部ID，question_no是用户看到的题目编号
+      const question = this.wrongAnswers.find(q => q.question_id === questionId)
+      if (question) {
+        this.$emit('start-practice', question.question_no)
+      } else {
+        // 如果找不到question对象，回退到使用questionId（可能已经是question_no）
+        this.$emit('start-practice', questionId)
       }
     },
 
@@ -130,6 +145,12 @@ export default {
   border: 1px solid #e0e0e0;
   border-radius: 6px;
   background: #fafafa;
+  transition: all 0.3s;
+}
+
+.wrong-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .wrong-question {
@@ -139,6 +160,18 @@ export default {
 .wrong-question h4 {
   color: #333;
   margin-bottom: 0.5rem;
+}
+
+.click-hint {
+  font-size: 0.8rem;
+  color: #1976d2;
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.wrong-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .wrong-meta {
@@ -169,6 +202,16 @@ export default {
 .btn.small {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
+}
+
+.btn.primary-btn {
+  background: #1976d2;
+  color: white;
+}
+
+.btn.success-btn {
+  background: #4caf50;
+  color: white;
 }
 
 .btn:hover {

@@ -166,6 +166,16 @@
             <div class="action-arrow">→</div>
           </div>
 
+			  <div class="quick-action-card primary" @click="currentView = 'custom-practice'">
+			    <div class="action-icon">🎯</div>
+			    <div class="action-content">
+			      <h3>专项练习</h3>
+			      <p>指定题号练习</p>
+			    </div>
+			    <div class="action-badge">新功能</div>
+			    <div class="action-arrow">→</div>
+			  </div>
+
           <div class="quick-action-card" @click="currentView = 'category-practice'">
             <div class="action-icon">📂</div>
             <div class="action-content">
@@ -334,69 +344,84 @@
       <PracticeMode
         v-if="currentView === 'practice'"
         :user-id="currentUserId"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
+        @back-to-document="currentView = 'document-review'"
       />
 
       <!-- 分类练习 -->
       <CategoryPractice
         v-if="currentView === 'category-practice'"
         :user-id="currentUserId"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
         :selected-category="selectedCategory"
       />
 
       <!-- 考试类别练习 -->
       <ExamCategoryPractice
         v-if="currentView === 'exam-category-practice'"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
       />
 
       <!-- 文档复习 -->
-      <DocumentReview
-        v-if="currentView === 'document-review'"
-        :user-id="currentUserId"
-        @back="currentView = 'home'"
-      />
+      <keep-alive>
+        <DocumentReview
+          v-if="currentView === 'document-review'"
+          :user-id="currentUserId"
+          @back="handleBackToHome"
+          @start-practice="currentView = 'practice'"
+          :key="currentUserId"
+        />
+      </keep-alive>
 
       <!-- 模拟考试 -->
       <MockExam
         v-if="currentView === 'mock-exam'"
         :user-id="currentUserId"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
       />
 
       <!-- 智能复习 -->
       <SmartReview
         v-if="currentView === 'smart-review'"
         :user-id="currentUserId"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
+      />
+
+      <!-- 专项练习 -->
+      <CustomPractice
+        v-if="currentView === 'custom-practice'"
+        :user-id="currentUserId"
+        :question-ids="customPracticeQuestionIds"
+        @back="handleBackToHome"
+        @practice-completed="handlePracticeCompleted"
       />
 
       <!-- 错题本 -->
       <WrongAnswersBook
         v-if="currentView === 'wrong-answers'"
         :user-id="currentUserId"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
+        @start-practice="handleStartPractice"
       />
 
       <!-- 学习进度 -->
       <ProgressStats
         v-if="currentView === 'progress'"
         :user-id="currentUserId"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
       />
 
       <!-- 题目管理（管理员） -->
       <QuestionAdmin
         v-if="currentView === 'question-admin'"
         :user-id="currentUserId"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
       />
 
       <!-- 系统配置（管理员） -->
       <AdminConfig
         v-if="currentView === 'admin-config'"
-        @back="currentView = 'home'"
+        @back="handleBackToHome"
       />
     </main>
 
@@ -443,6 +468,7 @@ import ChangePasswordModal from './components/ChangePasswordModal.vue'
 import QuestionAdmin from './components/QuestionAdmin.vue'
 import AdminConfig from './components/AdminConfig.vue'
 import DocumentReview from './components/DocumentReview.vue'
+import CustomPractice from './components/CustomPractice.vue';
 
 const API_BASE = '/api'
 const API_V2 = '/api/v2'
@@ -461,7 +487,8 @@ export default {
     ChangePasswordModal,
     QuestionAdmin,
     AdminConfig,
-    DocumentReview
+    DocumentReview,
+    CustomPractice
   },
   data() {
     return {
@@ -472,7 +499,8 @@ export default {
       selectedCategory: null,
       authStore,
       showBackToTop: false,
-      showUserMenu: false
+      showUserMenu: false,
+      customPracticeQuestionIds: null // 用于专项练习的题目ID
     }
   },
   computed: {
@@ -516,10 +544,22 @@ export default {
 
     async loadStats() {
       try {
-        const response = await axios.get(`${API_BASE}/stats`)
-        this.stats = response.data
+        // 获取用户的个人统计数据，而非全局统计
+        const response = await axios.get(`${API_V2}/stats/user/${this.currentUserId}`)
+        const userStats = response.data.overall
+
+        // 转换为首页需要的格式
+        this.stats = {
+          totalQuestions: userStats.total_questions,
+          practicedQuestions: userStats.practiced_questions,
+          correctAnswers: userStats.correct_answers,
+          wrongAnswers: userStats.wrong_answers,
+          accuracyRate: userStats.accuracy_rate
+        }
+
+        console.log('✅ 首页用户统计已更新:', this.stats)
       } catch (error) {
-        console.error('加载统计信息失败:', error)
+        console.error('❌ 加载统计信息失败:', error)
       }
     },
 
@@ -618,6 +658,41 @@ export default {
     },
 
     /**
+     * 返回首页时处理 - 刷新统计数据
+     */
+    async handleBackToHome() {
+      this.currentView = 'home'
+      // 清空专项练习题目ID
+      this.customPracticeQuestionIds = null
+      // 刷新统计数据以显示最新的练习进度
+      await this.loadStats()
+      await this.loadWrongStats()
+      await this.loadCategories()
+      console.log('✅ 返回首页，统计数据已刷新')
+    },
+
+    /**
+     * 专项练习完成处理
+     */
+    async handlePracticeCompleted(stats) {
+      console.log('📊 专项练习完成:', stats)
+      // 刷新统计数据
+      await this.loadStats()
+      await this.loadWrongStats()
+      console.log('✅ 统计数据已刷新')
+    },
+
+    /**
+     * 从错题本启动专项练习
+     */
+    handleStartPractice(questionId) {
+      // 设置要练习的题目ID（单个或多个）
+      this.customPracticeQuestionIds = questionId.toString()
+      // 切换到专项练习视图
+      this.currentView = 'custom-practice'
+    },
+
+    /**
      * 密码修改成功后处理
      */
     handlePasswordChanged() {
@@ -655,11 +730,6 @@ export default {
         behavior: 'smooth'
       })
     }
-  },
-
-  beforeUnmount() {
-    // 清理滚动监听
-    window.removeEventListener('scroll', this.handleScroll)
   }
 }
 </script>

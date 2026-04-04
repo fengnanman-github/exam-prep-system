@@ -445,6 +445,42 @@ exam-prep-system/
 
 ## 🔄 更新日志
 
+### v1.2.0 (2026-04-03)
+
+#### 🐛 重大Bug修复
+
+**1. 数据更新响应式问题**
+- **问题**: 文档练习完成后，"已练"和"准确率"统计数据不更新
+- **根因**: Vue响应式系统在`<keep-alive>`组件中未正确触发更新
+- **修复**:
+  - `frontend/src/components/DocumentReview.vue`: 使用 `this.$set()` 和 `this.$forceUpdate()` 确保响应式更新
+  - 添加智能刷新机制，统计数据更新时保持筛选状态
+- **影响**: 修复了文档练习后返回时数据不刷新的问题
+
+**2. 准确率计算错误**
+- **问题**: 准确率错误地显示为 `正确数/总题数` 而非 `正确数/已练数`
+- **示例**: 已练3题，答对2题，应显示66.7%，但错误显示1.1% (2/185)
+- **修复文件**:
+  - `backend/unified-stats-api.js`: 修复所有统计API的准确率计算
+    - by_document, by_type, by_law_category, by_tech_category, by_exam_category
+  - `backend/document-review-api.js`: 修复文档列表和统计API
+- **正确公式**: `accuracy = correct_questions / practiced_questions`
+
+**3. PostgreSQL类型错误**
+- **问题**: `function round(double precision, integer) does not exist`
+- **修复**: `backend/unified-core/unified-state.js` - 使用 `CAST(...AS numeric)` 替代 `::float`
+- **影响**: 修复了统一统计API的类型兼容性问题
+
+**4. 文档名称匹配增强**
+- **修复**: `backend/document-review-api.js` - 添加URL解码和模糊匹配支持
+- **改进**: 处理中文文档名称的URL编码问题
+
+#### ✅ 测试验证
+- ✅ 数据库数据正确保存
+- ✅ API返回正确的统计数据
+- ✅ 前端正确显示更新后的数据
+- ✅ 准确率计算正确 (例: 已练3题，正确2题 = 66.7%)
+
 ### v1.1.0 (2026-03-30)
 
 - ✨ 新增错题管理功能
@@ -497,6 +533,6 @@ docker stats --no-stream
 
 ---
 
-**版本**: 1.1.0
-**最后更新**: 2026-03-30
+**版本**: 1.2.0
+**最后更新**: 2026-04-03
 **维护团队**: 密评备考系统开发组

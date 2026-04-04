@@ -1,0 +1,132 @@
+--- a/frontend/src/components/PracticeMode.vue
++++ b/frontend/src/components/PracticeMode.vue
+@@ -499,41 +499,6 @@
+ 	async startPractice(type) {
+ 	this.practiceType = type
+ 	await this.loadQuestion()
+-	},
+-
+-	async loadQuestion() {
+-	this.loading = true
+-	try {
+-	const params = { user_id: this.userId }
+-	
+-	// 添加两级分类筛选
+-	if (this.selectedLawCategory) {
+-	params.law_category = this.selectedLawCategory
+-	}
+-	if (this.selectedTechCategory) {
+-	params.tech_category = this.selectedTechCategory
+-	}
+-	if (this.selectedDifficulty) {
+-	params.difficulty = this.selectedDifficulty
+-	}
+-	if (this.practiceType !== 'random') {
+-	params.type = this.practiceType
+-	}
+-	
+-	const response = await axios.get(`${API_BASE}/questions`, { params })
+-	this.currentQuestion = response.data
+-	this.showResult = false
+-	this.questionStartTime = Date.now()
+-	
+-	// 重置答案和提示状态
+-	this.userAnswer = null
+-	this.selectedOptions = []
+-	this.resetHint()
+-	} catch (error) {
+-	console.error('加载题目失败:', error)
+-	if (error.response?.status === 404) {
+-	// 没有找到题目，检查是否是新题用完了
+-	await this.checkNewQuestions()
+-	} else {
+-	alert('加载题目失败，请重试')
+-	}
+-	} finally {
+-	this.loading = false
+-	}
+-	},
+-
+-	// 多选题：切换选项
++	},
++
++	// 多选题：切换选项
+@@ -904,49 +869,6 @@
+-	async loadQuestion() {
+-	  this.loading = true
+-	  try {
+-	    const params = { user_id: this.userId }
+-	
+-	    // 添加两级分类筛选
+-	    if (this.selectedLawCategory) {
+-	      params.law_category = this.selectedLawCategory
+-	    }
+-	    if (this.selectedTechCategory) {
+-	      params.tech_category = this.selectedTechCategory
+-	    }
+-	    if (this.selectedDifficulty) {
+-	      params.difficulty = this.selectedDifficulty
+-	    }
+-	    if (this.practiceType !== 'random') {
+-	      params.question_type = this.practiceType
+-	    }
+-	
+-	    const response = await axios.get(`${API_BASE}/questions`, { params })
+-	
+-	    if (!response.data || response.data.length === 0) {
+-	      this.currentQuestion = null
+-	      this.noNewQuestions = true
+-	      this.newQuestionCheck = await this.checkNewQuestionsAvailable()
+-	      return
+-	    }
+-	
+-	    this.currentQuestion = response.data
+-	    this.showResult = false
+-	    this.selectedAnswer = null
+-	    this.selectedOptions = []
+-	    this.isCorrect = false
+-	    this.questionStartTime = Date.now()
+-	    this.hintLevel = 0
+-	    this.hintData = null
+-	    this.showHint = false
+-	    this.noNewQuestions = false
+-	    this.loading = false
+-	  } catch (error) {
+-	    console.error('加载题目失败:', error)
+-	    this.loading = false
+-	    if (error.response?.status === 404) {
+-	      this.currentQuestion = null
+-	      this.noNewQuestions = true
+-	    }
+-	  }
+-	},
+-
+-	// 提示功能
++	// 提示功能
+@@ -859,6 +861,10 @@
+ 	  this.showHint = false
+ 	  this.loading = false
++
++	  // 重置笔记状态
++	  this.currentNote = ''
++	  this.showNoteInput = false
+ 	},
+@@ -1240,9 +1246,18 @@
+ 	// 重置答案状态
+ 	this.userAnswer = null
+ 	this.selectedOptions = []
++	this.selectedAnswer = null
++	this.isCorrect = false
++	this.explanation = ''
++
++	// 重置提示状态
++	this.hintLevel = 0
++	this.hintData = null
++	this.showHint = false
++
+ 	this.resetHint()
+ 
+-	// 重置笔记状态（不在加载时自动获取笔记）
++	// 重置笔记状态
+ 	this.currentNote = ''
+ 	this.showNoteInput = false

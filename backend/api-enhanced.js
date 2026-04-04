@@ -419,7 +419,18 @@ module.exports = (pool) => {
         try {
             const { user_id, question_id, user_answer, is_correct, time_spent, practice_mode } = req.body;
 
+            // 详细日志
+            console.log('📝 练习提交请求:', {
+                user_id,
+                question_id,
+                user_answer,
+                is_correct,
+                time_spent,
+                practice_mode
+            });
+
             if (!user_id || !question_id || !user_answer || typeof is_correct !== 'boolean') {
+                console.log('❌ 参数验证失败:', { user_id, question_id, user_answer, is_correct });
                 return res.status(400).json({ error: '缺少必要参数' });
             }
 
@@ -437,6 +448,12 @@ module.exports = (pool) => {
                 practice_mode || 'random'
             ]);
 
+            console.log('✅ 练习记录保存成功:', {
+                id: result.rows[0].id,
+                question_id: result.rows[0].question_id,
+                is_correct: result.rows[0].is_correct
+            });
+
             // 如果答错，同时记录到错题本
             if (!is_correct) {
                 const wrongQuery = `
@@ -451,11 +468,12 @@ module.exports = (pool) => {
                     RETURNING *
                 `;
                 await pool.query(wrongQuery, [user_id, question_id]);
+                console.log('✅ 错题记录保存成功');
             }
 
             res.status(201).json(result.rows[0]);
         } catch (error) {
-            console.error('记录练习历史失败:', error);
+            console.error('❌ 记录练习历史失败:', error);
             res.status(500).json({ error: '记录失败' });
         }
     });
@@ -998,6 +1016,29 @@ module.exports = (pool) => {
         }
     });
 
+    // 检查单个题目的收藏状态
+    router.get('/favorite/:userId/:questionId', async (req, res) => {
+        try {
+            const { userId, questionId } = req.params;
+
+            const query = `
+                SELECT 1 as is_favorite
+                FROM favorite_questions
+                WHERE user_id = $1 AND question_id = $2
+            `;
+            const result = await pool.query(query, [userId, questionId]);
+
+            if (result.rows.length > 0) {
+                res.json({ is_favorite: true });
+            } else {
+                res.status(404).json({ is_favorite: false });
+            }
+        } catch (error) {
+            console.error('检查收藏状态失败:', error);
+            res.status(500).json({ error: '检查收藏状态失败' });
+        }
+    });
+
     // 删除收藏
     router.delete('/favorite/:userId/:questionId', async (req, res) => {
         try {
@@ -1078,6 +1119,67 @@ module.exports = (pool) => {
         } catch (error) {
             console.error('导出报告失败:', error);
             res.status(500).json({ error: '导出报告失败' });
+        }
+    });
+
+    /**
+     * GET /api/v2/questions/by-ids
+     * 根据题号列表获取题目（用于专项练习）
+     */
+    router.get('/questions/by-ids', async (req, res) => {
+        try {
+            const { ids } = req.query;
+
+            if (!ids) {
+                return res.status(400).json({ error: '请提供题号列表' });
+            }
+
+            // 解析题号列表（支持逗号分隔或数组）
+            const idList = Array.isArray(ids) ? ids : ids.split(',').map(id => id.trim());
+
+            // 验证题号格式
+            const validIds = idList.filter(id => {
+                const num = parseInt(id);
+                return !isNaN(num) && num > 0;
+            });
+
+            if (validIds.length === 0) {
+                return res.status(400).json({ error: '无效的题号列表' });
+            }
+
+            // 获取用户ID（从认证中间件或默认值）
+            const userId = req.user?.id || 'exam_user_001';
+
+            // 查询题目（仅通过question_no查询，因为用户输入的是题号而非内部ID）
+            const query = `
+                SELECT
+                    q.*,
+                    CASE WHEN ph.question_id IS NOT NULL THEN 'practiced' ELSE 'new' END as practice_status,
+                    ph.is_correct as last_correct,
+                    ph.practiced_at as last_practiced_at
+                FROM questions q
+                LEFT JOIN (
+                    SELECT DISTINCT ON (question_id)
+                        question_id,
+                        is_correct,
+                        practiced_at
+                    FROM practice_history
+                    WHERE user_id = $1
+                    ORDER BY question_id, practiced_at DESC
+                ) ph ON q.id = ph.question_id
+                WHERE q.question_no = ANY($2::text[])
+                ORDER BY q.question_no::int
+            `;
+
+            const result = await pool.query(query, [userId, validIds.map(String)]);
+
+            res.json({
+                total: result.rows.length,
+                questions: result.rows
+            });
+        } catch (error) {
+            console.error('根据题号获取题目失败:', error);
+            res.status(500).json({ error: '获取题目失败' });
         }
     });
 

@@ -270,6 +270,10 @@ export default {
   async mounted() {
     await this.loadProgress()
   },
+  async activated() {
+    console.log('ProgressStats: 组件被激活，刷新数据')
+    await this.loadProgress()
+  },
   methods: {
     async loadProgress() {
       try {

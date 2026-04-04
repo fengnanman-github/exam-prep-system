@@ -560,5 +560,65 @@ module.exports = (pool) => {
         }
     });
 
+    /**
+     * 获取用户错题列表（用于专项练习快捷选择）
+     * GET /api/v2/wrong-answers/:userId
+     */
+    router.get('/wrong-answers/:userId', async (req, res) => {
+        try {
+            const { userId } = req.params;
+
+            const query = `
+                SELECT
+                    wa.question_id,
+                    q.question_no,
+                    wa.wrong_count,
+                    wa.next_review_time
+                FROM wrong_answers wa
+                JOIN questions q ON wa.question_id = q.id
+                WHERE wa.user_id = $1
+                ORDER BY wa.next_review_time ASC
+            `;
+
+            const result = await pool.query(query, [userId]);
+
+            res.json(result.rows);
+        } catch (error) {
+            console.error('获取错题列表失败:', error);
+            res.status(500).json({ error: '获取错题列表失败' });
+        }
+    });
+
+    /**
+     * 获取用户收藏列表（用于专项练习快捷选择）
+     * GET /api/v2/favorites/:userId
+     */
+    router.get('/favorites/:userId', async (req, res) => {
+        try {
+            const { userId } = req.params;
+
+            const query = `
+                SELECT
+                    fq.question_id,
+                    q.question_no,
+                    fq.created_at
+                FROM favorite_questions fq
+                JOIN questions q ON fq.question_id = q.id
+                WHERE fq.user_id = $1
+                ORDER BY fq.created_at DESC
+            `;
+
+            const result = await pool.query(query, [userId]);
+
+            res.json({
+                favorites: result.rows,
+                total: result.rows.length
+            });
+        } catch (error) {
+            console.error('获取收藏列表失败:', error);
+            res.status(500).json({ error: '获取收藏列表失败' });
+        }
+    });
+
     return router;
 };

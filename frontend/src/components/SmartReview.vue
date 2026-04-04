@@ -57,7 +57,7 @@
         <span class="category-tag">{{ currentQuestion.law_category || currentQuestion.category }}</span>
         <span v-if="currentQuestion.tech_category" class="tech-tag">{{ currentQuestion.tech_category }}</span>
         <span class="review-count">
-          第{{ currentQuestion.review_count + 1 }}次复习
+          第{{ (currentQuestion.review_count || 0) + 1 }}次复习
         </span>
         <span class="mastery-level">
           掌握度: {{ Math.round(currentQuestion.mastery_level * 100) }}%
@@ -81,6 +81,7 @@
             <button
               v-for="(option, key) in getOptions(currentQuestion)"
               :key="key"
+              v-show="option"
               @click="submitAnswer(key)"
               class="option-btn"
               :class="{ selected: userAnswer === key }"
@@ -94,6 +95,7 @@
             <button
               v-for="(option, key) in getOptions(currentQuestion)"
               :key="key"
+              v-show="option"
               @click="toggleOption(key)"
               class="option-btn"
               :class="{ selected: selectedOptions.includes(key) }"
@@ -148,11 +150,20 @@
           <div class="answer-area">
             <!-- 正确答案 -->
             <div class="correct-answer" :class="{ 'user-correct': isAnswerCorrect, 'user-wrong': !isAnswerCorrect }">
-              <div class="answer-label">正确答案</div>
+              <div class="answer-label">✅ 正确答案</div>
               <div class="answer-value">{{ formatCorrectAnswer(currentQuestion.correct_answer) }}</div>
-              <div v-if="!isAnswerCorrect" class="your-answer-display">
-                你的答案: {{ getYourAnswer() }}
-              </div>
+            </div>
+
+            <!-- 你的答案（如果答错） -->
+            <div v-if="!isAnswerCorrect" class="your-answer">
+              <div class="answer-label">❌ 你的答案</div>
+              <div class="answer-value">{{ getYourAnswer() }}</div>
+            </div>
+
+            <!-- 答案解析 -->
+            <div v-if="currentQuestion.explanation" class="explanation-display">
+              <div class="explanation-label">📖 答案解析</div>
+              <div class="explanation-text">{{ currentQuestion.explanation }}</div>
             </div>
 
             <!-- 知识点 -->
@@ -252,6 +263,10 @@ export default {
     await this.checkAPIVersion()
     await this.loadReviewStats()
   },
+  async activated() {
+    console.log('SmartReview: 组件被激活，刷新数据')
+    await this.loadReviewStats()
+  },
   methods: {
     async checkAPIVersion() {
       try {
@@ -284,6 +299,17 @@ export default {
         }
       } catch (error) {
         console.error('加载复习统计失败:', error)
+        let errorMessage = '加载复习统计失败'
+        if (error.response?.status === 401) {
+          errorMessage = '登录已过期，请重新登录'
+        } else if (error.response?.status === 500) {
+          errorMessage = '服务器错误，请稍后重试'
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+        alert(errorMessage)
       }
     },
 
@@ -323,6 +349,19 @@ export default {
         }
       } catch (error) {
         console.error('获取复习题目失败:', error)
+        let errorMessage = '获取复习题目失败'
+        if (error.response?.status === 401) {
+          errorMessage = '登录已过期，请重新登录'
+        } else if (error.response?.status === 404) {
+          errorMessage = '没有可复习的题目'
+        } else if (error.response?.status === 500) {
+          errorMessage = '服务器错误，请稍后重试'
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+        alert(errorMessage)
       }
     },
 
@@ -788,31 +827,55 @@ export default {
 }
 
 .correct-answer.user-wrong {
-  background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+  background: #FFF3E0;
   border-left: 4px solid #FF9800;
 }
 
+.your-answer {
+  background: #FFEBEE;
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #F44336;
+}
+
 .answer-label {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: #666;
   margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-weight: 600;
 }
 
 .answer-value {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #333;
+  color: #2E7D32;
 }
 
-.your-answer-display {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed #ccc;
-  color: #FF9800;
+.your-answer .answer-value {
+  color: #F44336;
+}
+
+.explanation-display {
+  background: #F3E5F5;
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #9C27B0;
+}
+
+.explanation-label {
+  font-size: 0.9rem;
+  color: #7B1FA2;
+  margin-bottom: 0.75rem;
   font-weight: 600;
-  font-size: 1rem;
+}
+
+.explanation-text {
+  font-size: 0.95rem;
+  color: #4A148C;
+  line-height: 1.8;
+  white-space: pre-wrap;
 }
 
 .knowledge-point-display {
