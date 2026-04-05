@@ -5,6 +5,7 @@ import { authStore } from '../store/auth';
 const PracticeMode = () => import('../components/PracticeMode.vue');
 const CategoryPractice = () => import('../components/CategoryPractice.vue');
 const ExamCategoryPractice = () => import('../components/ExamCategoryPractice.vue');
+const CustomPractice = () => import('../components/CustomPractice.vue');
 const SmartReview = () => import('../components/SmartReview.vue');
 const IntelligentReview = () => import('../components/IntelligentReview.vue');
 const WrongAnswersBook = () => import('../components/WrongAnswersBook.vue');
@@ -17,6 +18,7 @@ const routes = [
   { path: '/practice', name: 'practice', component: PracticeMode, meta: { requiresAuth: true, requiresUser: true } },
   { path: '/category-practice', name: 'category-practice', component: CategoryPractice, meta: { requiresAuth: true, requiresUser: true } },
   { path: '/exam-category-practice', name: 'exam-category-practice', component: ExamCategoryPractice, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/custom-practice', name: 'custom-practice', component: CustomPractice, meta: { requiresAuth: true, requiresUser: true } },
   { path: '/document-review', name: 'document-review', component: () => import('../components/DocumentReview.vue'), meta: { requiresAuth: true, requiresUser: true } },
   { path: '/smart-review', name: 'smart-review', component: SmartReview, meta: { requiresAuth: true, requiresUser: true } },
   { path: '/intelligent-review', name: 'intelligent-review', component: IntelligentReview, meta: { requiresAuth: true, requiresUser: true } },

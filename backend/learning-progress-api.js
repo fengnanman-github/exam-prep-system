@@ -414,5 +414,56 @@ module.exports = (pool) => {
     }
   });
 
+  /**
+   * GET /api/v2/progress/:userId/chart
+   * 获取用户学习曲线数据（按天统计）
+   */
+  router.get('/:userId/chart', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const days = parseInt(req.query.days) || 7;
+
+      const chartQuery = `
+        WITH date_range AS (
+          SELECT generate_series(
+            CURRENT_DATE - INTERVAL '${days} days',
+            CURRENT_DATE,
+            INTERVAL '1 day'
+          ) as date
+        ),
+        daily_stats AS (
+          SELECT
+            dr.date,
+            COUNT(ph.question_id) as total_count,
+            COUNT(ph.question_id) FILTER (WHERE ph.is_correct = true) as correct_count,
+            ROUND(AVG(ph.time_spent)::numeric, 2) as avg_time
+          FROM date_range dr
+          LEFT JOIN practice_history ph ON DATE(ph.practiced_at) = dr.date AND ph.user_id = $1
+          GROUP BY dr.date
+          ORDER BY dr.date
+        )
+        SELECT
+          to_char(date, 'YYYY-MM-DD') as date,
+          total_count::text,
+          correct_count::text,
+          avg_time::text
+        FROM daily_stats
+        WHERE total_count > 0
+      `;
+
+      const result = await pool.query(chartQuery, [userId]);
+
+      res.json(result.rows);
+
+    } catch (error) {
+      console.error('获取图表数据失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取图表数据失败',
+        error: error.message
+      });
+    }
+  });
+
   return router;
 };

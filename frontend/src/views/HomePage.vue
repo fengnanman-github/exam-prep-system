@@ -14,6 +14,7 @@
       <router-link to="/practice" class="nav-item">🎯 随机练习</router-link>
       <router-link to="/category-practice" class="nav-item">📂 分类练习</router-link>
       <router-link to="/exam-category-practice" class="nav-item">🎯 考试类别</router-link>
+      <router-link to="/custom-practice" class="nav-item">🔧 专项练习</router-link>
       <router-link to="/document-review" class="nav-item">📖 文档复习</router-link>
       <router-link to="/smart-review" class="nav-item">🧠 智能复习</router-link>
       <router-link to="/intelligent-review" class="nav-item">⚡ 智能复习+</router-link>
@@ -30,6 +31,16 @@
           <div class="icon">🎯</div>
           <div class="title">继续练习</div>
           <div class="desc">随机抽题</div>
+        </div>
+        <div class="action-card" @click="$router.push('/exam-category-practice')">
+          <div class="icon">📝</div>
+          <div class="title">考试类别</div>
+          <div class="desc">按考试大纲</div>
+        </div>
+        <div class="action-card" @click="$router.push('/custom-practice')">
+          <div class="icon">🔧</div>
+          <div class="title">专项练习</div>
+          <div class="desc">自定义题目</div>
         </div>
         <div class="action-card" @click="$router.push('/smart-review')">
           <div class="icon">🧠</div>
@@ -84,7 +95,7 @@ export default {
 .content { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
 .content h1 { margin-bottom: 2rem; color: #1f2937; }
 
-.quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+.quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; }
 .action-card { background: white; padding: 2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.3s; border: 2px solid #e5e7eb; }
 .action-card:hover { transform: translateY(-4px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); border-color: #667eea; }
 .icon { font-size: 3rem; margin-bottom: 1rem; }

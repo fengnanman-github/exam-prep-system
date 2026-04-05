@@ -6,7 +6,7 @@
         <h2>🎯 按考试类别练习</h2>
         <p class="subtitle">按照密评考试大纲要求，针对性练习</p>
       </div>
-      <button @click="$emit('back')" class="btn-back">← 返回首页</button>
+      <button @click="goBack" class="btn-back">← 返回首页</button>
     </div>
 
     <!-- 考试说明卡片 -->
@@ -137,8 +137,8 @@
                 v-for="(option, index) in getOptions()"
                 :key="index"
                 class="option-item"
-                :class="{ 'selected': selectedAnswer === option }"
-                @click="selectAnswer(option)"
+                :class="{ 'selected': selectedAnswer === getOptionLabel(index) }"
+                @click="selectAnswer(getOptionLabel(index))"
               >
                 <span class="option-label">{{ getOptionLabel(index) }}</span>
                 <span class="option-text">{{ option }}</span>
@@ -148,15 +148,15 @@
             <div v-if="currentQuestion.question_type === '判断题'" class="judge-options">
               <div
                 class="judge-option"
-                :class="{ 'selected': selectedAnswer === '正确' }"
-                @click="selectAnswer('正确')"
+                :class="{ 'selected': selectedAnswer === 'A' }"
+                @click="selectAnswer('A')"
               >
                 ✓ 正确
               </div>
               <div
                 class="judge-option"
-                :class="{ 'selected': selectedAnswer === '错误' }"
-                @click="selectAnswer('错误')"
+                :class="{ 'selected': selectedAnswer === 'B' }"
+                @click="selectAnswer('B')"
               >
                 ✗ 错误
               </div>
@@ -203,7 +203,7 @@ import api from '../utils/api'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 
-const API_BASE = '/api'
+const API_BASE = '/api/v2'
 
 // 考试类别配置
 const EXAM_CATEGORIES = {
@@ -240,6 +240,7 @@ const EXAM_CATEGORIES = {
 }
 
 export default {
+	inject: ['authStore'],
   name: 'ExamCategoryPractice',
   data() {
     return {
@@ -261,7 +262,7 @@ export default {
   },
   computed: {
     userId() {
-      return this.$root.authStore?.getCurrentUserId() || 'exam_user_001'
+      return this.authStore.getCurrentUserId()
     },
     isUnifiedEnabled() {
       return this.useUnifiedAPI && versionConfig.isFeatureEnabled('unifiedSuperMemo')
@@ -294,6 +295,9 @@ export default {
     await this.loadCategories()
   },
   methods: {
+    goBack() {
+      this.$router.back()
+    },
     async checkVersionConfig() {
       try {
         await versionConfig.init()
@@ -420,7 +424,7 @@ export default {
           const response = await api.post(`${API_BASE}/unified/practice/submit`, {
             user_id: this.userId,
             question_id: this.currentQuestion.id,
-            user_answer: this.selectedAnswer === '正确' ? 'A' : (this.selectedAnswer === '错误' ? 'B' : this.selectedAnswer),
+            user_answer: this.selectedAnswer,
             is_correct: isCorrect,
             time_spent: timeSpent,
             practice_mode: 'exam_category'

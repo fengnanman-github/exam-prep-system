@@ -3,8 +3,11 @@
     <div class="page-container">
       <!-- 页面标题 -->
       <div class="page-header">
-        <h1 class="page-title">📖 按文档复习</h1>
-        <p class="page-subtitle">围绕原始法律法规和标准进行系统学习</p>
+        <div class="header-left">
+          <h1 class="page-title">📖 按文档复习</h1>
+          <p class="page-subtitle">围绕原始法律法规和标准进行系统学习</p>
+        </div>
+        <button @click="goBack" class="btn-back">← 返回首页</button>
       </div>
 
       <!-- 统计概览 -->
@@ -168,7 +171,7 @@
                 </div>
 
                 <div class="doc-action">
-                  <button class="btn-practice">
+                  <button @click="startDocumentPractice(doc)" class="btn-practice">
                     <span>{{ doc.practiced_questions > 0 ? '继续练习' : '开始练习' }}</span>
                     <span class="arrow">→</span>
                   </button>
@@ -216,13 +219,15 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../utils/api'
+import { authStore } from '../store/auth'
 import { versionConfig } from '../config/version-config'
 import { API_TIMEOUT, PRACTICE } from '../config/constants'
 
 const API_BASE = '/api/v2/documents'
 
 export default {
+	inject: ['authStore'],
   name: 'DocumentReview',
   emits: ['start-practice'],
   data() {
@@ -273,6 +278,9 @@ export default {
     }
   },
   methods: {
+    goBack() {
+      this.$router.back()
+    },
     async loadData(forceReload = false) {
       this.loading = true
       this.error = null
@@ -298,7 +306,7 @@ export default {
       const cacheBuster = forceReload ? { headers: { 'Cache-Control': 'no-cache' } } : {}
 
       // 只调用一次统一统计API
-      const response = await axios.get(`/api/v2/stats/user/${userId}${timestamp}`, {
+      const response = await api.get(`/api/v2/stats/user/${userId}${timestamp}`, {
         timeout: API_TIMEOUT.MEDIUM, // 10秒超时
         headers: {
           ...cacheBuster.headers,
@@ -325,8 +333,8 @@ export default {
         description: this.getCategoryDescription(doc.category),
         category_label: doc.category || '其他',
         accuracy: doc.total > 0
-          ? Math.round((doc.correct / doc.total) * 100 * 10) / 10
-          : '0.0'
+          ? Math.round((doc.correct / doc.total) * 1000) / 10
+          : 0.0
       }))
 
       // 构建统计数据
@@ -345,7 +353,7 @@ export default {
         const userId = this.getUserId()
         const timestamp = `?t=${Date.now()}` // 避免缓存
 
-        const response = await axios.get(`/api/v2/stats/user/${userId}${timestamp}`, {
+        const response = await api.get(`/api/v2/stats/user/${userId}${timestamp}`, {
           timeout: API_TIMEOUT.MEDIUM,
           headers: { 'Cache-Control': 'no-cache' }
         })
@@ -362,7 +370,7 @@ export default {
           newStats[doc.document_name] = {
             practiced_questions: parseInt(doc.practiced) || 0,
             correct_questions: parseInt(doc.correct) || 0,
-            accuracy: doc.total > 0 ? Math.round((doc.correct / doc.total) * 100 * 10) / 10 : '0.0'
+            accuracy: doc.total > 0 ? Math.round((doc.correct / doc.total) * 1000) / 10 : 0.0
           }
         })
 
@@ -463,7 +471,7 @@ export default {
           exclude_practiced: this.practiceOptions.excludePracticed
         }
 
-        const response = await axios.get(
+        const response = await api.get(
           `${API_BASE}/${encodeURIComponent(this.selectedDocument.document_name)}/questions`,
           { params }
         )
@@ -492,7 +500,7 @@ export default {
         }
 
         // 跳转到练习页面
-        this.$emit('start-practice')
+        this.$router.push({ name: 'practice' })
 
         this.closePracticeModal()
       } catch (err) {
@@ -513,8 +521,8 @@ export default {
       }
     },
     getUserId() {
-      // 从 authStore 获取用户ID，与 App.vue 的 currentUserId 保持一致
-      return this.$root.authStore?.user?.username || 'exam_user_001'
+      // 从 authStore 获取用户ID，使用标准的 getCurrentUserId 方法
+      return this.authStore.getCurrentUserId()
     },
     // 文档图标
     getDocumentIcon(category) {
@@ -614,7 +622,7 @@ export default {
 
         // 从所有文档中获取题目
         for (const doc of categoryDocs) {
-          const response = await axios.get(
+          const response = await api.get(
             `${API_BASE}/${encodeURIComponent(doc.document_name)}/questions`,
             {
               params: {
@@ -673,7 +681,7 @@ export default {
 
         // 从所有文档中获取未练习的题目
         for (const doc of categoryDocs) {
-          const response = await axios.get(
+          const response = await api.get(
             `${API_BASE}/${encodeURIComponent(doc.document_name)}/questions`,
             {
               params: {
@@ -749,8 +757,15 @@ export default {
 }
 
 .page-header {
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 2rem;
+  gap: 2rem;
+}
+
+.header-left {
+  flex: 1;
 }
 
 .page-title {
@@ -764,6 +779,22 @@ export default {
   font-size: 1rem;
   color: #718096;
   margin: 0;
+}
+
+.btn-back {
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-back:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
 }
 
 /* 统计概览 */

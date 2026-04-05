@@ -2,7 +2,7 @@
   <div class="smart-review">
     <div class="header">
       <h2>🧠 智能复习</h2>
-      <button @click="$emit('back')" class="btn-back">← 返回</button>
+      <button @click="goBack" class="btn-back">← 返回</button>
     </div>
 
     <!-- 复习统计 -->
@@ -208,19 +208,21 @@
       <div class="empty-icon">📭</div>
       <h3>暂无待复习题目</h3>
       <p>继续练习，积累错题后再来复习吧！</p>
-      <button @click="$emit('back')" class="btn primary">开始练习</button>
+      <button @click="goBack" class="btn primary">开始练习</button>
     </div>
   </div>
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../utils/api'
+import { authStore } from '../store/auth'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 
-const API_BASE = '/api'
+const API_BASE = '/api/v2'
 
 export default {
+	inject: ['authStore'],
   name: 'SmartReview',
   emits: ['back'],
   data() {
@@ -252,8 +254,7 @@ export default {
   },
   computed: {
     userId() {
-      // 从props获取或使用默认值
-      return this.$props.userId || 'exam_user_001'
+      return this.authStore.getCurrentUserId()
     },
     isUnifiedEnabled() {
       return this.useUnifiedAPI && versionConfig.isFeatureEnabled('unifiedSuperMemo')
@@ -269,6 +270,9 @@ export default {
     await this.loadReviewStats()
   },
   methods: {
+    goBack() {
+      this.$router.back()
+    },
     async checkAPIVersion() {
       try {
         await versionConfig.init()
@@ -295,7 +299,7 @@ export default {
           }
         } else {
           // 使用旧版API
-          const response = await axios.get(`${API_BASE}/review/stats/${this.userId}`)
+          const response = await api.get(`${API_BASE}/review/stats/${this.userId}`)
           this.reviewStats = response.data
         }
       } catch (error) {
@@ -322,7 +326,7 @@ export default {
         if (this.isUnifiedEnabled) {
           // 使用统一API获取题目
           const url = `${API_BASE}/unified/practice/due-review/${this.userId}`
-          const response = await axios.get(url, {
+          const response = await api.get(url, {
             params: { limit: mode === 'all' ? 100 : 20 }
           })
           questions = response.data.questions
@@ -336,7 +340,7 @@ export default {
           } else {
             url += `recommend/${this.userId}?limit=100`
           }
-          const response = await axios.get(url)
+          const response = await api.get(url)
           questions = response.data
         }
 
@@ -471,7 +475,7 @@ export default {
           const isCorrect = this.isAnswerCorrect
           const timeSpent = this.getTimeSpent()
 
-          response = await axios.post(`${API_BASE}/unified/practice/submit`, {
+          response = await api.post(`${API_BASE}/unified/practice/submit`, {
             user_id: this.userId,
             question_id: questionId,
             user_answer: this.getYourAnswer(),
@@ -488,7 +492,7 @@ export default {
           }
         } else {
           // 使用旧版API
-          response = await axios.post(`${API_BASE}/review/submit`, {
+          response = await api.post(`${API_BASE}/review/submit`, {
             user_id: this.userId,
             question_id: questionId,
             quality: quality
@@ -548,12 +552,6 @@ export default {
       return options
     }
   },
-  props: {
-    userId: {
-      type: String,
-      required: true
-    }
-  }
 }
 </script>
 

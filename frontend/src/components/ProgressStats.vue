@@ -2,7 +2,7 @@
   <div class="progress-stats">
     <div class="header">
       <h2>📊 学习进度</h2>
-      <button @click="$emit('back')" class="btn-back">← 返回</button>
+      <button @click="goBack" class="btn-back">← 返回</button>
     </div>
 
     <!-- 新增：科学化指标体系 -->
@@ -283,42 +283,14 @@
       </div>
     </div>
 
-    <!-- 学习曲线 -->
+    <!-- 学习曲线 - 优化版 -->
     <div class="section">
-      <h3>最近7天学习曲线</h3>
-      <div v-if="chartData.length > 0" class="chart-container">
-        <div class="chart-bars">
-          <div
-            v-for="item in chartData"
-            :key="item.date"
-            class="chart-bar"
-          >
-            <div class="bar-wrapper">
-              <div
-                class="bar correct"
-                :style="{ height: getBarHeight(item.total_count, item.correct_count) + '%' }"
-                :title="`正确: ${item.correct_count}`"
-              ></div>
-              <div
-                class="bar wrong"
-                :style="{ height: getBarHeight(item.total_count, item.total_count - item.correct_count) + '%' }"
-                :title="`错误: ${item.total_count - item.correct_count}`"
-              ></div>
-            </div>
-            <div class="bar-label">{{ formatDate(item.date) }}</div>
-          </div>
+      <h3>📈 最近7天学习曲线</h3>
+      <div class="chart-wrapper">
+        <LearningCurveChart :chart-data="chartData" />
+        <div v-if="chartData.length === 0" class="empty-state-overlay">
+          <p>暂无学习曲线数据</p>
         </div>
-        <div class="chart-legend">
-          <span class="legend-item">
-            <span class="legend-color correct"></span> 正确
-          </span>
-          <span class="legend-item">
-            <span class="legend-color wrong"></span> 错误
-          </span>
-        </div>
-      </div>
-      <div v-else class="empty-state">
-        <p>暂无学习曲线数据</p>
       </div>
     </div>
 
@@ -332,13 +304,18 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../utils/api'
+import { authStore } from '../store/auth'
+import LearningCurveChart from './LearningCurveChart.vue'
 
-const API_BASE = '/api'
+const API_BASE = '/api/v2'
 
 export default {
+	inject: ['authStore'],
   name: 'ProgressStats',
-  emits: ['back'],
+  components: {
+    LearningCurveChart
+  },
   data() {
     return {
       progress: null,
@@ -358,6 +335,9 @@ export default {
     }
   },
   computed: {
+    userId() {
+      return this.authStore.getCurrentUserId()
+    },
     accuracyRate() {
       if (!this.progress || !this.progress.total_practiced) return 0
       return Math.round((this.progress.total_correct / this.progress.total_practiced) * 100)
@@ -377,13 +357,21 @@ export default {
     await this.loadEnhancedData()
   },
   methods: {
+    goBack() {
+      this.$router.back()
+    },
     async loadProgress() {
       try {
+        console.log('[ProgressStats] 开始加载数据, userId:', this.userId)
+
         // 使用统一统计API加载所有数据
         const [statsRes, chartRes] = await Promise.all([
-          axios.get(`/api/v2/stats/user/${this.userId}`),
-          axios.get(`${API_BASE}/progress/${this.userId}/chart?days=7`)
+          api.get(`/api/v2/stats/user/${this.userId}`),
+          api.get(`${API_BASE}/progress/${this.userId}/chart?days=7`)
         ])
+
+        console.log('[ProgressStats] 统计数据:', statsRes.data)
+        console.log('[ProgressStats] 图表响应:', chartRes.data)
 
         const stats = statsRes.data
 
@@ -442,6 +430,8 @@ export default {
         this.twoLevelProgress = Array.from(twoLevelMap.values())
 
         this.chartData = chartRes.data
+        console.log('[ProgressStats] 图表数据已加载:', this.chartData)
+        console.log('[ProgressStats] 图表数据长度:', this.chartData.length)
 
         // 默认展开前两个法律大类
         if (this.twoLevelProgress.length > 0) {
@@ -451,7 +441,7 @@ export default {
           }
         }
       } catch (error) {
-        console.error('加载进度失败:', error)
+        console.error('[ProgressStats] 加载进度失败:', error)
       }
     },
 
@@ -518,7 +508,7 @@ export default {
 
     async exportReport() {
       try {
-        const response = await axios.get(`${API_BASE}/export/${this.userId}`, {
+        const response = await api.get(`${API_BASE}/export/${this.userId}`, {
           responseType: 'blob'
         })
 
@@ -542,19 +532,19 @@ export default {
       this.loading = true
       try {
         // 加载学习总览
-        const summaryRes = await axios.get(`/api/v2/progress/summary/${this.userId}`)
+        const summaryRes = await api.get(`/api/v2/progress/summary/${this.userId}`)
         if (summaryRes.data.success) {
           this.enhancedSummary = summaryRes.data.data
         }
 
         // 加载成就
-        const achievementsRes = await axios.get(`/api/v2/progress/achievements/${this.userId}`)
+        const achievementsRes = await api.get(`/api/v2/progress/achievements/${this.userId}`)
         if (achievementsRes.data.success) {
           this.achievements = achievementsRes.data.data
         }
 
         // 加载推荐
-        const recommendationsRes = await axios.get(`/api/v2/progress/recommendations/${this.userId}`)
+        const recommendationsRes = await api.get(`/api/v2/progress/recommendations/${this.userId}`)
         if (recommendationsRes.data.success) {
           this.recommendations = recommendationsRes.data.data
         }
@@ -570,7 +560,7 @@ export default {
 
     async loadCalendarData() {
       try {
-        const res = await axios.get(`/api/v2/progress/calendar/${this.userId}`, {
+        const res = await api.get(`/api/v2/progress/calendar/${this.userId}`, {
           params: {
             month: this.currentMonth,
             year: this.currentYear
@@ -601,20 +591,15 @@ export default {
     },
 
     handleRecommendation(rec) {
-      // 根据推荐类型跳转到相应功能
+      // 修复：使用路由跳转而不是修改父组件状态
       console.log('处理推荐:', rec)
 
-      // 直接修改父组件的currentView
-      const parent = this.$parent
-      if (parent) {
-        if (rec.action_type === 'practice' || rec.action_type === 'new_questions') {
-          parent.currentView = 'practice'
-        } else if (rec.action_type === 'smart_review') {
-          parent.currentView = 'intelligent-review'
-        } else if (rec.action_type === 'category_practice') {
-          parent.selectedCategory = rec.category
-          parent.currentView = 'category-practice'
-        }
+      if (rec.action_type === 'practice' || rec.action_type === 'new_questions') {
+        this.$router.push({ name: 'practice' })
+      } else if (rec.action_type === 'smart_review') {
+        this.$router.push({ name: 'intelligent-review' })
+      } else if (rec.action_type === 'category_practice') {
+        this.$router.push({ name: 'category-practice', query: { category: rec.category } })
       }
     },
 
@@ -627,12 +612,6 @@ export default {
         'explore': '🚀'
       }
       return icons[type] || '💡'
-    }
-  },
-  props: {
-    userId: {
-      type: String,
-      required: true
     }
   }
 }
@@ -926,6 +905,15 @@ export default {
 
 .chart-container {
   padding: 1rem 0;
+}
+
+/* 新版学习曲线图表容器 */
+.chart-wrapper {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 1rem 0;
 }
 
 .chart-bars {

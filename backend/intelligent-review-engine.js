@@ -85,6 +85,7 @@ class EnhancedSuperMemo {
    * @returns {object} 新状态
    */
   static calculateNextReview(state, quality) {
+    // 确保所有数值都是数字类型，处理字符串或undefined/null
     const {
       ease_factor = 2.5,
       review_count = 0,
@@ -92,20 +93,30 @@ class EnhancedSuperMemo {
       mastery_level = 0
     } = state;
 
+    // 转换为数字类型
+    const ef = parseFloat(ease_factor) || 2.5;
+    const rc = parseInt(review_count) || 0;
+    const ri = parseFloat(review_interval) || 1;
+    const ml = parseFloat(mastery_level) || 0;
+
     // 计算新的难度因子（EF）
     // SM-2公式：EF' = EF + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))
-    let newEaseFactor = ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+    let newEaseFactor = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
     newEaseFactor = Math.max(1.3, Math.min(2.5, newEaseFactor)); // 限制在1.3-2.5之间
 
     // 计算新的间隔（I）
     let newInterval;
-    if (review_count === 0) {
+    if (rc === 0) {
       newInterval = 1; // 第一次复习：1天
-    } else if (review_count === 1) {
+    } else if (rc === 1) {
       newInterval = 6; // 第二次复习：6天
     } else {
       // 后续复习：I = I * EF
-      newInterval = Math.round(review_interval * newEaseFactor);
+      newInterval = Math.round(ri * newEaseFactor);
+      // 确保结果是有效数字
+      if (!isFinite(newInterval) || newInterval < 1) {
+        newInterval = 1;
+      }
     }
 
     // 添加随机扰动（±10%），避免所有题目在同一天复习
@@ -115,16 +126,16 @@ class EnhancedSuperMemo {
     // 计算新的掌握度
     // 使用平滑递增的方式，避免剧烈波动
     const masteryIncrease = (quality - 2.5) * 0.1;
-    let newMasteryLevel = mastery_level + masteryIncrease;
+    let newMasteryLevel = ml + masteryIncrease;
     newMasteryLevel = Math.max(0, Math.min(1, newMasteryLevel)); // 限制在0-1之间
 
     // 计算置信度（基于复习次数和正确率）
-    const confidence = Math.min(1, review_count * 0.1 + (quality / 5) * 0.5);
+    const confidence = Math.min(1, rc * 0.1 + (quality / 5) * 0.5);
 
     return {
       ease_factor: parseFloat(newEaseFactor.toFixed(2)),
       review_interval: newInterval,
-      review_count: review_count + 1,
+      review_count: rc + 1,
       mastery_level: parseFloat(newMasteryLevel.toFixed(3)),
       confidence: parseFloat(confidence.toFixed(3))
     };

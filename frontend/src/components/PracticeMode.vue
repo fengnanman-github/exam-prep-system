@@ -338,9 +338,10 @@ import { authStore } from '../store/auth'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 
-const API_BASE = '/api'
+const API_BASE = '/api/v2'
 
 export default {
+	inject: ['authStore'],
 name: 'PracticeMode',
 emits: ['wrong-answer-recorded', 'back', 'back-to-document'],
 data() {
@@ -416,6 +417,9 @@ useUnifiedAPI: false
 },
 
 computed: {
+	userId() {
+		return this.authStore.getCurrentUserId()
+	},
 hasActiveFilters() {
   return this.selectedLawCategory || this.selectedTechCategory ||
         this.selectedDifficulty || this.practiceType !== 'random'
@@ -1267,12 +1271,6 @@ this.loading = false
 }
 },
 
-props: {
-userId: {
-type: String,
-required: true
-}
-}
 }
 </script>
 

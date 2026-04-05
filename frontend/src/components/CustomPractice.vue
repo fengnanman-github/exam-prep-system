@@ -124,7 +124,7 @@
     <!-- 练习阶段 -->
     <div v-else class="practice-phase">
       <div class="practice-header">
-        <button @click="exitPractice" class="btn-exit">← 返回</button>
+        <button @click="goBack" class="btn-exit">← 返回</button>
         <h3>专项练习</h3>
         <div class="progress-info">
           {{ currentIndex + 1 }} / {{ practiceQuestions.length }}
@@ -313,7 +313,7 @@
             </div>
           </div>
           <div class="summary-actions">
-            <button @click="exitPractice" class="btn-back">返回选择</button>
+            <button @click="goBack" class="btn-back">返回选择</button>
             <button @click="retryWrong" v-if="stats.wrong > 0" class="btn-retry">
               重练错题 ({{ stats.wrong }}题)
             </button>
@@ -325,22 +325,20 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../utils/api'
+import { authStore } from '../store/auth'
 import MarkdownRenderer from './MarkdownRenderer.vue'
 
-const API_BASE = '/api'
+const API_BASE = '/api/v2'
 
 export default {
+	inject: ['authStore'],
   name: 'CustomPractice',
   components: {
     MarkdownRenderer
   },
   emits: ['back', 'practice-completed'],
   props: {
-    userId: {
-      type: String,
-      required: true
-    },
     questionIds: {
       type: String,
       default: null
@@ -391,6 +389,9 @@ export default {
   },
 
   computed: {
+    userId() {
+      return this.authStore.getCurrentUserId()
+    },
     parsedQuestionIds() {
       if (!this.questionIdsInput) return []
 
@@ -407,18 +408,22 @@ export default {
     }
   },
   mounted() {
-    // 如果从外部传入questionIds，自动开始练习
-    if (this.questionIds) {
-      this.questionIdsInput = this.questionIds
+    // 如果从外部传入questionIds（通过props或query），自动开始练习
+    const questionIds = this.questionIds || this.$route.query.questionIds
+    if (questionIds) {
+      this.questionIdsInput = questionIds
       this.startPractice()
     }
   },
 
   methods: {
+    goBack() {
+      this.$router.back()
+    },
     // 快捷选择：从错题本
     async selectWrongAnswers() {
       try {
-        const response = await axios.get(`${API_BASE}/wrong-answers/${this.userId}`)
+        const response = await api.get(`${API_BASE}/wrong-answers/${this.userId}`)
         // 后端直接返回数组，不是包含wrong_answers字段的对象
         const wrongQuestions = Array.isArray(response.data) ? response.data : []
 
@@ -438,7 +443,7 @@ export default {
     // 快捷选择：从收藏
     async selectFavoritedQuestions() {
       try {
-        const response = await axios.get(`${API_BASE}/favorites/${this.userId}`)
+        const response = await api.get(`${API_BASE}/favorites/${this.userId}`)
         // 后端返回 {favorites: [...], total: n}
         const favorites = response.data.favorites || []
 
@@ -458,7 +463,7 @@ export default {
     // 快捷选择：从笔记
     async selectNotedQuestions() {
       try {
-        const response = await axios.get(`${API_BASE}/notes/${this.userId}`)
+        const response = await api.get(`${API_BASE}/notes/${this.userId}`)
         // 后端直接返回数组，不是包含notes字段的对象
         const notes = Array.isArray(response.data) ? response.data : []
 
@@ -484,7 +489,7 @@ export default {
 
       this.searchingByFilename = true
       try {
-        const response = await axios.get('/api/questions/search', {
+        const response = await api.get('/api/questions/search', {
           params: {
             filename: this.filenameSearchInput.trim(),
             limit: 500
@@ -557,7 +562,7 @@ export default {
 
       try {
         // 获取题目
-        const response = await axios.get(`${API_BASE}/questions/by-ids`, {
+        const response = await api.get(`${API_BASE}/questions/by-ids`, {
           params: { ids: this.parsedQuestionIds.join(',') }
         })
 
@@ -611,7 +616,7 @@ export default {
       if (!this.currentQuestion) return
 
       try {
-        const response = await axios.get(`${API_BASE}/favorite/${this.userId}/${this.currentQuestion.id}`)
+        const response = await api.get(`${API_BASE}/favorite/${this.userId}/${this.currentQuestion.id}`)
         this.isFavorite = response.data.is_favorite || false
       } catch (error) {
         // 如果404错误，说明未收藏
@@ -630,12 +635,12 @@ export default {
       try {
         if (this.isFavorite) {
           // 取消收藏
-          await axios.delete(`${API_BASE}/favorite/${this.userId}/${this.currentQuestion.id}`)
+          await api.delete(`${API_BASE}/favorite/${this.userId}/${this.currentQuestion.id}`)
           this.isFavorite = false
           // 取消收藏成功，无需弹窗提示
         } else {
           // 添加收藏
-          await axios.post(`${API_BASE}/favorite`, {
+          await api.post(`${API_BASE}/favorite`, {
             user_id: this.userId,
             question_id: this.currentQuestion.id
           })
@@ -653,7 +658,7 @@ export default {
       if (!this.currentQuestion) return
 
       try {
-        const response = await axios.get(`${API_BASE}/notes/${this.userId}/${this.currentQuestion.id}`)
+        const response = await api.get(`${API_BASE}/notes/${this.userId}/${this.currentQuestion.id}`)
         if (response.data.note) {
           this.currentNote = response.data.note
         }
@@ -721,7 +726,7 @@ export default {
       // 同步数据到各个系统
       try {
         // 1. 记录练习历史（统一API）
-        await axios.post(`${API_BASE}/practice/history`, {
+        await api.post(`${API_BASE}/practice/history`, {
           user_id: this.userId,
           question_id: this.currentQuestion.id,
           user_answer: answer,
@@ -753,7 +758,7 @@ export default {
 
         // 调用智能复习API
         try {
-          const reviewResponse = await axios.post(`${API_BASE}/review/submit`, {
+          const reviewResponse = await api.post(`${API_BASE}/review/submit`, {
             user_id: this.userId,
             question_id: this.currentQuestion.id,
             quality: quality
@@ -795,7 +800,7 @@ export default {
 
       this.savingNote = true
       try {
-        await axios.post(`${API_BASE}/notes`, {
+        await api.post(`${API_BASE}/notes`, {
           user_id: this.userId,
           question_id: this.currentQuestion.id,
           note: this.currentNote

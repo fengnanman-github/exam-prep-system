@@ -1,6 +1,7 @@
 <template>
   <div class="wrong-view">
     <h2>📚 我的错题本</h2>
+    <button @click="goBack" class="btn-back">← 返回首页</button>
     <div class="wrong-stats">
       <p>错题总数: <strong>{{ wrongStats.total_wrong || 0 }}</strong></p>
       <p>总错误次数: <strong>{{ wrongStats.total_errors || 0 }}</strong></p>
@@ -76,11 +77,13 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../utils/api'
+import { authStore } from '../store/auth'
 
 const API_BASE = '/api'
 
 export default {
+	inject: ['authStore'],
   name: 'WrongAnswersBook',
   emits: ['wrong-answer-removed', 'start-practice'],
   data() {
@@ -93,6 +96,15 @@ export default {
     }
   },
   computed: {
+    userId() {
+      if (!this.authStore) {
+        console.error('[WrongAnswersBook] authStore 未注入')
+        return 'exam_user_001'
+      }
+      const userId = this.authStore.getCurrentUserId()
+      console.log('[WrongAnswersBook] 当前用户ID:', userId)
+      return userId || 'exam_user_001'
+    },
     selectedItemsSet: {
       get() {
         return Array.from(this.selectedItems)
@@ -104,9 +116,12 @@ export default {
     }
   },
   methods: {
+    goBack() {
+      this.$router.back()
+    },
     async loadWrongAnswers() {
       try {
-        const response = await axios.get(`${API_BASE}/wrong-answers/${this.userId}`)
+        const response = await api.get(`${API_BASE}/wrong-answers/${this.userId}`)
         this.wrongAnswers = response.data
         await this.loadWrongStats()
       } catch (error) {
@@ -116,7 +131,7 @@ export default {
 
     async loadWrongStats() {
       try {
-        const response = await axios.get(`${API_BASE}/wrong-answers/${this.userId}/stats`)
+        const response = await api.get(`${API_BASE}/wrong-answers/${this.userId}/stats`)
         this.wrongStats = response.data
       } catch (error) {
         console.error('加载错题统计失败:', error)
@@ -169,7 +184,7 @@ export default {
       try {
         // 批量删除
         const deletePromises = Array.from(this.selectedItems).map(questionId =>
-          axios.delete(`${API_BASE}/wrong-answers/${this.userId}/${questionId}`)
+          api.delete(`${API_BASE}/wrong-answers/${this.userId}/${questionId}`)
         )
 
         await Promise.all(deletePromises)
@@ -188,20 +203,19 @@ export default {
     },
 
     practiceQuestion(questionId) {
-      // 修复：传递question_no而不是question_id，因为CustomPractice需要题目编号
-      // question_id是数据库内部ID，question_no是用户看到的题目编号
+      // 修复：使用路由跳转到专项练习页面
       const question = this.wrongAnswers.find(q => q.question_id === questionId)
       if (question) {
-        this.$emit('start-practice', question.question_no)
+        this.$router.push({ name: 'custom-practice', query: { questionIds: question.question_no } })
       } else {
-        // 如果找不到question对象，回退到使用questionId（可能已经是question_no）
-        this.$emit('start-practice', questionId)
+        // 如果找不到question对象，使用questionId
+        this.$router.push({ name: 'custom-practice', query: { questionIds: questionId } })
       }
     },
 
     async removeWrongAnswer(questionId) {
       try {
-        await axios.delete(`${API_BASE}/wrong-answers/${this.userId}/${questionId}`)
+        await api.delete(`${API_BASE}/wrong-answers/${this.userId}/${questionId}`)
         await this.loadWrongAnswers()
         this.$emit('wrong-answer-removed')
       } catch (error) {
@@ -223,19 +237,34 @@ export default {
       this.loadWrongAnswers()
     }
   },
-  props: {
-    userId: {
-      type: String,
-      required: true
-    }
-  },
   mounted() {
+    console.log('[WrongAnswersBook] 组件挂载')
+    console.log('[WrongAnswersBook] authStore:', this.authStore)
+    console.log('[WrongAnswersBook] userId:', this.userId)
     this.loadWrongAnswers()
+  },
+  async activated() {
+    console.log('[WrongAnswersBook] 组件激活')
+    await this.loadWrongAnswers()
   }
 }
 </script>
 
 <style scoped>
+
+  .btn-back {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    color: #666;
+    margin-bottom: 1rem;
+  }
+
+  .btn-back:hover {
+    background: #f5f5f5;
+  }
 .wrong-view {
   max-width: 1200px;
   margin: 0 auto;
