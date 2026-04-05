@@ -62,11 +62,11 @@ async function register(pool, req, res) {
     const emailVerificationToken = crypto.randomBytes(32).toString('hex');
     const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小时
 
-    // 创建用户
+    // 创建用户（带审批状态）
     const result = await client.query(
-      `INSERT INTO users (username, password_hash, email, display_name, email_verification_token, email_verification_expires)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, username, email, display_name, role, created_at`,
+      `INSERT INTO users (username, password_hash, email, display_name, email_verification_token, email_verification_expires, approval_status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending_verification')
+       RETURNING id, username, email, display_name, role, approval_status, created_at`,
       [username, password_hash, email || null, display_name || username, emailVerificationToken, emailVerificationExpires]
     );
 
@@ -77,30 +77,25 @@ async function register(pool, req, res) {
       event_type: 'user_registered',
       user_id: user.id,
       username: username,
+      approval_status: user.approval_status,
       ip_address: req.ip,
       user_agent: req.headers['user-agent']
     });
 
-    // 发送邮箱验证邮件（这里需要集成邮件服务）
+    // 发送邮箱验证邮件
     if (email) {
-      // TODO: 发送验证邮件
-      console.log(`[EMAIL] 验证邮件已发送至 ${email}, Token: ${emailVerificationToken}`);
+      const emailService = require('../services/email-service');
+      await emailService.sendEmailVerificationEmail(user.username, user.email, emailVerificationToken);
     }
 
-    // 生成Token
-    const token = generateToken(user);
-
     res.status(201).json({
-      message: '注册成功',
-      token,
+      message: '注册成功，请验证邮箱后等待管理员审批',
       user: {
         id: user.id,
         username: user.username,
-        display_name: user.display_name,
-        role: user.role,
-        email_verified: false
-      },
-      passwordStrength: passwordValidation.strength
+        email: user.email,
+        approval_status: user.approval_status
+      }
     });
 
   } catch (error) {
@@ -146,13 +141,12 @@ async function login(pool, req, res) {
     // 查询用户
     const result = await client.query(
       `SELECT id, username, password_hash, display_name, role, is_active,
-              email, email_verified, last_login_at, failed_login_attempts
+              email, email_verified, approval_status, last_login_at, failed_login_attempts
        FROM users WHERE username = $1`,
       [username]
     );
 
     if (result.rows.length === 0) {
-      // 记录失败尝试
       const failResult = await accountLockout.recordFailedAttempt(username);
       await logAuditEvent(client, {
         event_type: 'login_failed_user_not_found',
@@ -171,6 +165,17 @@ async function login(pool, req, res) {
 
     if (!user.is_active) {
       return res.status(403).json({ error: '账户已被禁用' });
+    }
+
+    // 检查审批状态
+    if (user.approval_status === 'pending_verification') {
+      return res.status(403).json({ error: '请先验证您的邮箱地址' });
+    }
+    if (user.approval_status === 'pending_approval') {
+      return res.status(403).json({ error: '您的账户正在等待管理员审批' });
+    }
+    if (user.approval_status === 'rejected') {
+      return res.status(403).json({ error: '您的账户申请已被拒绝' });
     }
 
     // 验证密码
@@ -411,8 +416,66 @@ async function logAuditEvent(client, eventData) {
   }
 }
 
+/**
+ * 邮箱验证
+ */
+async function verifyEmail(pool, req, res) {
+  const { token } = req.query;
+
+  try {
+    const client = await pool.connect();
+
+    const result = await client.query(
+      `SELECT id, username, email, email_verification_expires, approval_status
+       FROM users WHERE email_verification_token = $1`,
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      client.release();
+      return res.status(400).json({ error: '验证链接无效' });
+    }
+
+    const user = result.rows[0];
+
+    if (user.email_verification_expires < new Date()) {
+      client.release();
+      return res.status(400).json({ error: '验证链接已过期，请重新注册' });
+    }
+
+    await client.query(
+      `UPDATE users
+       SET email_verified = true,
+           email_verification_token = NULL,
+           email_verification_expires = NULL,
+           approval_status = 'pending_approval'
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    await logAuditEvent(client, {
+      event_type: 'email_verified',
+      user_id: user.id,
+      username: user.username,
+      email: user.email
+    });
+
+    client.release();
+
+    res.json({
+      message: '邮箱验证成功，请等待管理员审批',
+      approval_status: 'pending_approval'
+    });
+
+  } catch (error) {
+    console.error('[Auth] Email verification error:', error);
+    res.status(500).json({ error: '邮箱验证失败' });
+  }
+}
+
 module.exports = {
   register,
   login,
-  changePassword
+  changePassword,
+  verifyEmail
 };

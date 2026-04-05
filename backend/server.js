@@ -10,8 +10,11 @@ const practiceExtendedApi = require('./practice-extended');
 const questionAdminApi = require('./question-admin-api');
 const uncertainQuestionsApi = require('./uncertain-questions-api');
 const authRouter = require('./auth/auth-router');
+const authController = require('./auth/enhanced-auth-controller');
 const { authenticateToken, requireAdmin } = require('./auth/auth-middleware');
 const publicApi = require('./public-api');
+const userManagementApi = require('./api/user-management-api');
+const dataAnalyticsApi = require('./api/data-analytics-api');
 
 // 监控和分析
 const performanceMonitor = require('./middleware/performance-monitor');
@@ -483,6 +486,15 @@ app.use('/api/auth', authRouter(pool));
 app.use('/api/v2/admin', authenticateToken, requireAdmin, questionAdminApi(pool));
 
 // 不确定题目API路由
+// 用户管理API（需要管理员权限）
+app.use('/api/v2/admin', authenticateToken, requireAdmin, userManagementApi);
+
+// 数据分析API（需要管理员权限）
+app.use('/api/v2/admin/analytics', authenticateToken, requireAdmin, dataAnalyticsApi);
+
+// 邮箱验证端点（公开）
+app.get('/api/auth/verify-email', (req, res) => authController.verifyEmail(pool, req, res));
+
 app.use('/api/v2/uncertain', uncertainQuestionsApi(pool));
 
 // 文档复习API路由
