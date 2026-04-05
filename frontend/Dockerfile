@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安装依赖
-RUN npm ci --only=production=false
+RUN npm install
 
 # 复制源代码（.dockerignore会排除dist和node_modules）
 COPY . .
