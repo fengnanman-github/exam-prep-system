@@ -13,36 +13,29 @@
     </div>
 
     <div class="dashboard-content">
-      <div v-if="activeTab === 'users'" class="tab-content">
-        <h2>用户管理</h2>
-        <p class="tab-desc">管理用户注册、审批和权限</p>
-        <div class="placeholder">🚧 正在开发中...</div>
-      </div>
-
-      <div v-if="activeTab === 'monitoring'" class="tab-content">
-        <h2>学习监控</h2>
-        <p class="tab-desc">查看全员学习进度和活跃度</p>
-        <div class="placeholder">🚧 正在开发中...</div>
-      </div>
-
-      <div v-if="activeTab === 'config'" class="tab-content">
-        <h2>系统配置</h2>
-        <p class="tab-desc">配置系统参数和规则</p>
-        <div class="placeholder">🚧 正在开发中...</div>
-      </div>
-
-      <div v-if="activeTab === 'analytics'" class="tab-content">
-        <h2>数据分析</h2>
-        <p class="tab-desc">系统概览、用户行为、题目分析</p>
-        <div class="placeholder">🚧 正在开发中...</div>
-      </div>
+      <UserManagement v-if="activeTab === 'users'" />
+      <LearningMonitoring v-if="activeTab === 'monitoring'" />
+      <SystemConfiguration v-if="activeTab === 'config'" />
+      <DataAnalytics v-if="activeTab === 'analytics'" />
     </div>
   </div>
 </template>
 
 <script>
+import UserManagement from '../components/admin/UserManagement.vue';
+import LearningMonitoring from '../components/admin/LearningMonitoring.vue';
+import SystemConfiguration from '../components/admin/SystemConfiguration.vue';
+import DataAnalytics from '../components/admin/DataAnalytics.vue';
+
 export default {
   name: 'AdminDashboard',
+  components: {
+    UserManagement,
+    LearningMonitoring,
+    SystemConfiguration,
+    DataAnalytics
+  },
+
   data() {
     return {
       activeTab: 'users',
