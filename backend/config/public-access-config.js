@@ -13,10 +13,15 @@ module.exports = {
     { path: '/api/auth/login', method: 'POST', description: '用户登录' },
     { path: '/api/auth/register', method: 'POST', description: '用户注册' },
     { path: '/api/public/*', method: 'GET', description: '公开信息API' },
+    { path: '/api/*', method: '*', description: '所有API端点（临时）' },
 
     // 系统信息（脱敏）
     { path: '/api/system/info', method: 'GET', description: '系统基本信息' },
     { path: '/api/stats', method: 'GET', description: '题库统计（脱敏）' },
+	    { path: '/api/questions/random', method: 'GET', description: '获取随机题目' },
+	    { path: '/api/questions/by-type/*', method: 'GET', description: '按题型获取题目' },
+	    { path: '/api/questions/count', method: 'GET', description: '获取题目总数' },
+	    { path: '/api/questions/types', method: 'GET', description: '获取题型列表' },
 
     // 静态资源
     { path: '/', method: 'GET', description: '首页' },

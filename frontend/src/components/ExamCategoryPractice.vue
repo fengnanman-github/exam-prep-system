@@ -203,7 +203,7 @@ import api from '../utils/api'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 
-const API_BASE = '/api/v2'
+const API_BASE = '/api'
 
 // 考试类别配置
 const EXAM_CATEGORIES = {

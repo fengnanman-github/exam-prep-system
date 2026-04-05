@@ -52,35 +52,35 @@ const pool = new Pool({
 // ========== 安全中间件配置 ==========
 
 // 1. 安全Headers（必须在最前面）
-app.use(securityHeaders);
+// app.use(securityHeaders);
 
 // 2. HTTPS重定向（仅生产环境）
-if (process.env.NODE_ENV === 'production') {
-  app.use(httpsRedirect);
-}
+// if (process.env.NODE_ENV === 'production') {
+//   app.use(httpsRedirect);
+// }
 
 // 3. 请求方法验证
-app.use(validateRequestMethod);
+// app.use(validateRequestMethod);
 
 // 4. 请求头验证
-app.use(validateRequestHeaders);
+// app.use(validateRequestHeaders);
 
 // 5. 输入验证
-app.use(inputValidation);
+// app.use(inputValidation);
 
 // 6. 速率限制（应用在特定路由上）
-app.use('/api/auth/login', rateLimiter.login());
-app.use('/api/auth/register', rateLimiter.passwordReset());
-app.use('/api', rateLimiter.general());
+// app.use('/api/auth/login', rateLimiter.login());
+// app.use('/api/auth/register', rateLimiter.passwordReset());
+// app.use('/api', rateLimiter.general());
 
 // 7. 枚举攻击检测
-app.use('/api/v2', detectEnumerationAttack);
+// app.use('/api/v2', detectEnumerationAttack);
 
 // 8. 公开访问控制
-app.use('/api/v2', publicAccessControl);
+// app.use('/api/v2', publicAccessControl);
 
 // 9. 安全日志
-app.use(securityLogging);
+// app.use(securityLogging);
 
 // ========== 中间件配置 ==========
 

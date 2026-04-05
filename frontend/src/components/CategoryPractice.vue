@@ -237,7 +237,7 @@ import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 import { PRACTICE, ERROR_MESSAGES } from '../config/constants'
 
-const API_BASE = '/api/v2'
+const API_BASE = '/api'
 
 export default {
   name: 'CategoryPractice',

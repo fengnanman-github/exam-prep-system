@@ -54,7 +54,11 @@
       "Bash(rm frontend/src/components/PracticeMode.vue)",
       "Bash(cp frontend/src/components/PracticeMode.vue.backup-20260404-141641 frontend/src/components/PracticeMode.vue)",
       "Bash(sed:*)",
-      "Bash(sudo npm:*)"
+      "Bash(sudo npm:*)",
+      "Bash(/tmp/fix-axios-imports.sh)",
+      "Bash(/tmp/fix-components.sh)",
+      "Bash(sed -i 's/import axios from '\\\\''axios'\\\\''/import api from '\\\\''..\\\\/utils\\\\/api'\\\\''\\\\nimport { authStore } from '\\\\''..\\\\/store\\\\/auth'\\\\''/g' PracticeMode.vue)",
+      "Bash(sed -i 's/axios\\\\./api\\\\./g' PracticeMode.vue)"
     ]
   },
   "outputStyle": "Explanatory",

@@ -333,11 +333,12 @@ class="btn btn-secondary"
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../utils/api'
+import { authStore } from '../store/auth'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 
-const API_BASE = '/api/v2'
+const API_BASE = '/api'
 
 export default {
 name: 'PracticeMode',
@@ -460,8 +461,8 @@ async loadCategories() {
 try {
 // 并行加载两级分类
 const [lawRes, techRes] = await Promise.all([
-axios.get(`${API_BASE}/categories/law`),
-axios.get(`${API_BASE}/categories/tech`)
+api.get(`${API_BASE}/categories/law`),
+api.get(`${API_BASE}/categories/tech`)
 ])
 
 this.lawCategories = lawRes.data
@@ -518,7 +519,7 @@ if (this.practiceType !== 'random') {
 params.type = this.practiceType
 }
 
-const response = await axios.get(`${API_BASE}/questions`, { params })
+const response = await api.get(`${API_BASE}/questions`, { params })
 this.currentQuestion = response.data
 this.showResult = false
 this.questionStartTime = Date.now()
@@ -616,7 +617,7 @@ if (this.isDocumentPracticeMode || this.isCategoryPracticeMode) {
   // 记录错题
   if (!this.isCorrect) {
     try {
-      await axios.post('/api/wrong-answers', {
+      await api.post('/api/wrong-answers', {
         question_id: this.currentQuestion.id,
         user_id: this.userId
       })
@@ -654,7 +655,7 @@ if (this.isDocumentPracticeMode || this.isCategoryPracticeMode) {
       })
     }
 
-    const response = await axios.post(`${API_BASE}/practice/history`, practiceData)
+    const response = await api.post(`${API_BASE}/practice/history`, practiceData)
     console.log('✅ 练习历史记录成功:', response.data)
   } catch (error) {
     console.error('❌ 记录练习历史失败:', error)
@@ -696,7 +697,7 @@ this.canGoBack = this.currentHistoryIndex > 0
 try {
   if (this.isUnifiedEnabled) {
     // 使用统一API
-    const response = await axios.post(`${API_BASE}/unified/practice/submit`, {
+    const response = await api.post(`${API_BASE}/unified/practice/submit`, {
       user_id: this.userId,
       question_id: this.currentQuestion.id,
       user_answer: answer,
@@ -711,7 +712,7 @@ try {
     }
   } else {
     // 使用旧API
-    await axios.post(`${API_BASE}/practice/history`, {
+    await api.post(`${API_BASE}/practice/history`, {
       user_id: this.userId,
       question_id: this.currentQuestion.id,
       user_answer: answer,
@@ -732,7 +733,7 @@ if (!this.isCorrect) {
       await this.loadNote()
     } else {
       // 旧API需要手动记录错题
-      await axios.post(`/api/wrong-answers`, {
+      await api.post(`/api/wrong-answers`, {
         question_id: this.currentQuestion.id,
         user_id: this.userId
       })
@@ -923,7 +924,7 @@ async loadQuestion() {
       params.question_type = this.practiceType
     }
 
-    const response = await axios.get(`${API_BASE}/questions`, { params })
+    const response = await api.get(`${API_BASE}/questions`, { params })
 
     if (!response.data || response.data.length === 0) {
       this.currentQuestion = null
@@ -963,7 +964,7 @@ this.hintLevel = 4
 }
 
 try {
-const response = await axios.get(`${API_BASE}/practice/hint/${this.currentQuestion.id}`, {
+const response = await api.get(`${API_BASE}/practice/hint/${this.currentQuestion.id}`, {
 params: { level: this.hintLevel }
 })
 this.hintData = response.data
@@ -995,7 +996,7 @@ if (this.practiceType !== 'random') {
 params.question_type = this.practiceType
 }
 
-const response = await axios.get(`${API_BASE}/practice/check-new/${this.userId}`, { params })
+const response = await api.get(`${API_BASE}/practice/check-new/${this.userId}`, { params })
 this.newQuestionCheck = response.data
 this.noNewQuestions = !response.data.has_new_questions
 
@@ -1153,7 +1154,7 @@ async loadNote() {
 if (!this.currentQuestion) return
 
 try {
-const response = await axios.get(`${API_BASE}/notes/${this.userId}/${this.currentQuestion.id}`)
+const response = await api.get(`${API_BASE}/notes/${this.userId}/${this.currentQuestion.id}`)
 if (response.data.note) {
 this.currentNote = response.data.note
 }
@@ -1171,7 +1172,7 @@ return
 
 this.savingNote = true
 try {
-await axios.post(`${API_BASE}/notes`, {
+await api.post(`${API_BASE}/notes`, {
 user_id: this.userId,
 question_id: this.currentQuestion.id,
 note: this.currentNote
@@ -1192,7 +1193,7 @@ const params = {}
 if (this.selectedLawCategory) params.law_category = this.selectedLawCategory
 if (this.selectedTechCategory) params.tech_category = this.selectedTechCategory
 
-const response = await axios.get(`${API_BASE}/practice/stats/${this.userId}`, { params })
+const response = await api.get(`${API_BASE}/practice/stats/${this.userId}`, { params })
 this.categoryStats = response.data
 } catch (error) {
 console.error('加载统计失败:', error)
@@ -1233,7 +1234,7 @@ url = `${API_BASE}/questions/unpracticed-single/${this.userId}`
 url = `${API_BASE}/questions/practice`
 }
 
-const response = await axios.get(url, { params })
+const response = await api.get(url, { params })
 this.currentQuestion = response.data
 this.showResult = false
 this.questionStartTime = Date.now()

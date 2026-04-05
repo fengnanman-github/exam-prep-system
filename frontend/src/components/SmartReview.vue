@@ -218,7 +218,7 @@ import axios from 'axios'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 
-const API_BASE = '/api/v2'
+const API_BASE = '/api'
 
 export default {
   name: 'SmartReview',

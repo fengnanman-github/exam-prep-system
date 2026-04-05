@@ -17,6 +17,7 @@ const routes = [
   { path: '/practice', name: 'practice', component: PracticeMode, meta: { requiresAuth: true, requiresUser: true } },
   { path: '/category-practice', name: 'category-practice', component: CategoryPractice, meta: { requiresAuth: true, requiresUser: true } },
   { path: '/exam-category-practice', name: 'exam-category-practice', component: ExamCategoryPractice, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/document-review', name: 'document-review', component: () => import('../components/DocumentReview.vue'), meta: { requiresAuth: true, requiresUser: true } },
   { path: '/smart-review', name: 'smart-review', component: SmartReview, meta: { requiresAuth: true, requiresUser: true } },
   { path: '/intelligent-review', name: 'intelligent-review', component: IntelligentReview, meta: { requiresAuth: true, requiresUser: true } },
   { path: '/wrong-answers', name: 'wrong-answers', component: WrongAnswersBook, meta: { requiresAuth: true, requiresUser: true } },

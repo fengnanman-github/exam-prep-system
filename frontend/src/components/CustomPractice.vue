@@ -328,7 +328,7 @@
 import axios from 'axios'
 import MarkdownRenderer from './MarkdownRenderer.vue'
 
-const API_BASE = '/api/v2'
+const API_BASE = '/api'
 
 export default {
   name: 'CustomPractice',
