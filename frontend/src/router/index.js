@@ -1,94 +1,44 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { authStore } from '../store/auth';
 
-// 路由组件（懒加载）
-const LoginPage = () => import('../views/LoginPage.vue');
-const RegisterPage = () => import('../views/RegisterPage.vue');
-const HomePage = () => import('../views/HomePage.vue');
-
-// 管理员组件（懒加载）
-const AdminDashboard = () => import('../views/AdminDashboard.vue');
-
-// 练习组件（复用现有）
+// 复用现有组件
 const PracticeMode = () => import('../components/PracticeMode.vue');
+const CategoryPractice = () => import('../components/CategoryPractice.vue');
+const ExamCategoryPractice = () => import('../components/ExamCategoryPractice.vue');
+const SmartReview = () => import('../components/SmartReview.vue');
+const IntelligentReview = () => import('../components/IntelligentReview.vue');
+const WrongAnswersBook = () => import('../components/WrongAnswersBook.vue');
+const ProgressStats = () => import('../components/ProgressStats.vue');
 
 const routes = [
-  {
-    path: '/login',
-    name: 'login',
-    component: LoginPage,
-    meta: { public: true }
-  },
-  {
-    path: '/register',
-    name: 'register',
-    component: RegisterPage,
-    meta: { public: true }
-  },
-  {
-    path: '/verify-email',
-    name: 'verify-email',
-    component: LoginPage, // 复用登录页面显示验证结果
-    meta: { public: true }
-  },
-  {
-    path: '/',
-    name: 'home',
-    component: HomePage,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/practice',
-    name: 'practice',
-    component: PracticeMode,
-    meta: { requiresAuth: true, requiresUser: true }
-  },
-  {
-    path: '/admin',
-    name: 'admin',
-    component: AdminDashboard,
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/login'
-  }
+  { path: '/login', name: 'login', component: () => import('../views/LoginPage.vue'), meta: { public: true } },
+  { path: '/register', name: 'register', component: () => import('../views/RegisterPage.vue'), meta: { public: true } },
+  { path: '/', name: 'home', component: () => import('../views/HomePage.vue'), meta: { requiresAuth: true } },
+  { path: '/practice', name: 'practice', component: PracticeMode, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/category-practice', name: 'category-practice', component: CategoryPractice, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/exam-category-practice', name: 'exam-category-practice', component: ExamCategoryPractice, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/smart-review', name: 'smart-review', component: SmartReview, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/intelligent-review', name: 'intelligent-review', component: IntelligentReview, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/wrong-answers', name: 'wrong-answers', component: WrongAnswersBook, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/progress', name: 'progress', component: ProgressStats, meta: { requiresAuth: true, requiresUser: true } },
+  { path: '/admin', name: 'admin', component: () => import('../views/AdminDashboard.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/:pathMatch(.*)*', redirect: '/' }
 ];
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-});
+const router = createRouter({ history: createWebHistory(), routes });
 
-// 路由守卫
 router.beforeEach((to, from, next) => {
   const isAuthenticated = authStore.isAuthenticated;
   const isAdmin = authStore.isAdmin();
 
-  // 公开路由直接放行
   if (to.meta.public) {
-    if (isAuthenticated) {
-      return next('/');
-    }
+    if (isAuthenticated) return next('/');
     return next();
   }
 
-  // 需要认证的路由
-  if (to.meta.requiresAuth) {
-    if (!isAuthenticated) {
-      return next('/login');
-    }
-
-    // 检查管理员权限
-    if (to.meta.requiresAdmin && !isAdmin) {
-      return next('/');
-    }
-
-    // 检查用户权限（管理员不能访问用户练习功能）
-    if (to.meta.requiresUser && isAdmin) {
-      return next('/admin');
-    }
-  }
+  if (to.meta.requiresAuth && !isAuthenticated) return next('/login');
+  if (to.meta.requiresAdmin && !isAdmin) return next('/');
+  if (to.meta.requiresUser && isAdmin) return next('/admin');
 
   next();
 });
