@@ -366,23 +366,21 @@ export default {
           }
         })
 
-        // 使用 Vue.set 或 this.$set 确保响应式更新
-        this.documents.forEach((doc, index) => {
+        // Vue 3：直接赋值数组元素即可触发响应式更新
+        this.documents = this.documents.map(doc => {
           if (newStats[doc.document_name]) {
-            this.$set(this.documents, index, {
+            return {
               ...doc,
               practiced_questions: newStats[doc.document_name].practiced_questions,
               correct_questions: newStats[doc.document_name].correct_questions,
               accuracy: newStats[doc.document_name].accuracy
-            })
+            }
           }
+          return doc
         })
 
         // 重新应用筛选
         this.filterDocuments()
-
-        // 强制更新视图
-        this.$forceUpdate()
 
         console.log('✅ 统计数据已刷新', {
           documents_count: this.documents.length,

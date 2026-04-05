@@ -39,6 +39,57 @@
           </div>
         </div>
 
+        <!-- 文件名搜索 -->
+        <div class="filename-search-section">
+          <h3>📄 按文件名搜索</h3>
+          <p class="section-desc">搜索题干中包含指定文件名的题目（如：密码法、商用密码管理条例等）</p>
+          <div class="search-group">
+            <div class="search-input-wrapper">
+              <input
+                v-model="filenameSearchInput"
+                @keyup.enter="searchByFilename"
+                placeholder="输入文件名，例如：密码法"
+                class="filename-input"
+                type="text"
+              />
+              <button
+                @click="searchByFilename"
+                :disabled="!filenameSearchInput.trim() || searchingByFilename"
+                class="btn-search"
+              >
+                {{ searchingByFilename ? '搜索中...' : '🔍 搜索' }}
+              </button>
+            </div>
+            <div v-if="filenameSearchResults.length > 0" class="search-results-info">
+              找到 {{ filenameSearchResults.length }} 道题目
+              <button @click="addSearchResults" class="btn-add-results">
+                添加到练习列表
+              </button>
+              <button @click="clearSearchResults" class="btn-clear-search">
+                清空搜索结果
+              </button>
+            </div>
+            <div v-if="filenameSearchResults.length > 0" class="search-results-preview">
+              <div class="results-header">
+                <span>搜索结果预览（前20条）：</span>
+              </div>
+              <div class="results-list">
+                <div
+                  v-for="question in filenameSearchResults.slice(0, 20)"
+                  :key="question.id"
+                  class="result-item"
+                >
+                  <span class="result-number">#{{ question.question_no }}</span>
+                  <span class="result-text">{{ truncateText(question.question_text, 80) }}</span>
+                </div>
+                <div v-if="filenameSearchResults.length > 20" class="more-results">
+                  还有 {{ filenameSearchResults.length - 20 }} 道题目...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 题号预览 -->
         <div v-if="parsedQuestionIds.length > 0" class="preview-section">
           <h3>已选择的题目 ({{ parsedQuestionIds.length }}题)</h3>
@@ -301,6 +352,11 @@ export default {
       questionIdsInput: '',
       practiceStarted: false,
 
+      // 文件名搜索
+      filenameSearchInput: '',
+      filenameSearchResults: [],
+      searchingByFilename: false,
+
       // 练习阶段
       practiceQuestions: [],
       currentIndex: 0,
@@ -419,6 +475,68 @@ export default {
       }
     },
 
+    // 按文件名搜索题目
+    async searchByFilename() {
+      if (!this.filenameSearchInput.trim()) {
+        alert('请输入文件名')
+        return
+      }
+
+      this.searchingByFilename = true
+      try {
+        const response = await axios.get('/api/questions/search', {
+          params: {
+            filename: this.filenameSearchInput.trim(),
+            limit: 500
+          }
+        })
+
+        if (response.data.success && response.data.data.length > 0) {
+          this.filenameSearchResults = response.data.data
+          console.log(`✅ 找到 ${response.data.data.length} 道题目`)
+        } else {
+          alert('未找到包含该文件名的题目')
+          this.filenameSearchResults = []
+        }
+      } catch (error) {
+        console.error('搜索失败:', error)
+        alert('搜索失败，请重试')
+        this.filenameSearchResults = []
+      } finally {
+        this.searchingByFilename = false
+      }
+    },
+
+    // 将搜索结果添加到练习列表
+    addSearchResults() {
+      if (this.filenameSearchResults.length === 0) return
+
+      const questionNos = this.filenameSearchResults.map(q => q.question_no)
+      const existingIds = this.parsedQuestionIds
+
+      // 合并题号，去重
+      const allIds = [...new Set([...existingIds, ...questionNos])]
+      this.questionIdsInput = allIds.join(', ')
+
+      // 清空搜索结果
+      this.clearSearchResults()
+
+      console.log(`✅ 已添加 ${questionNos.length} 道题目到练习列表`)
+    },
+
+    // 清空搜索结果
+    clearSearchResults() {
+      this.filenameSearchResults = []
+      this.filenameSearchInput = ''
+    },
+
+    // 截断文本
+    truncateText(text, maxLength) {
+      if (!text) return ''
+      if (text.length <= maxLength) return text
+      return text.substring(0, maxLength) + '...'
+    },
+
     // 清空输入
     clearInput() {
       this.questionIdsInput = ''
@@ -514,7 +632,7 @@ export default {
           // 取消收藏
           await axios.delete(`${API_BASE}/favorite/${this.userId}/${this.currentQuestion.id}`)
           this.isFavorite = false
-          alert('已取消收藏')
+          // 取消收藏成功，无需弹窗提示
         } else {
           // 添加收藏
           await axios.post(`${API_BASE}/favorite`, {
@@ -522,7 +640,7 @@ export default {
             question_id: this.currentQuestion.id
           })
           this.isFavorite = true
-          alert('已添加收藏')
+          // 添加收藏成功，无需弹窗提示
         }
       } catch (error) {
         console.error('收藏操作失败:', error)
@@ -683,7 +801,7 @@ export default {
           note: this.currentNote
         })
         this.showNoteInput = false
-        alert('✅ 笔记已保存')
+        // 笔记保存成功，无需弹窗提示
       } catch (error) {
         console.error('保存笔记失败:', error)
         alert('保存笔记失败，请重试')
@@ -844,6 +962,169 @@ export default {
   margin-bottom: 1rem;
   color: #333;
   font-size: 1.1rem;
+}
+
+.filename-search-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+}
+
+.filename-search-section h3 {
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.section-desc {
+  margin-bottom: 1rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.search-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.search-input-wrapper {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filename-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.filename-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-search {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-search:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-search:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.search-results-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.btn-add-results {
+  padding: 0.5rem 1rem;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.btn-add-results:hover {
+  background: #45a049;
+}
+
+.btn-clear-search {
+  padding: 0.5rem 1rem;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-clear-search:hover {
+  background: #da190b;
+}
+
+.search-results-preview {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.results-header {
+  font-weight: 600;
+  color: #667eea;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.result-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.result-item:hover {
+  background: #f8f9fa;
+}
+
+.result-number {
+  font-weight: 600;
+  color: #667eea;
+  min-width: 60px;
+  font-size: 0.9rem;
+}
+
+.result-text {
+  flex: 1;
+  color: #333;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.more-results {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 0.5rem;
 }
 
 .question-ids-textarea {
@@ -1299,6 +1580,7 @@ export default {
   border-radius: 4px;
   font-size: 0.9rem;
   color: #333;
+  text-align: left;
 }
 
 
@@ -1346,9 +1628,7 @@ export default {
   border-radius: 4px;
   font-size: 0.9rem;
   color: #333;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  text-align: left;
 }
 
 .btn-edit-note {

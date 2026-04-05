@@ -1,0 +1,496 @@
+/* 移动端优化样式 */
+
+/* ========== 全局移动端优化 ========== */
+
+/* 触摸优化 - 增大触摸目标 */
+button,
+a,
+.btn,
+.option-btn,
+.nav-btn {
+  min-height: 44px; /* iOS推荐的最小触摸目标尺寸 */
+  min-width: 44px;
+}
+
+/* 禁用点击高亮（iOS Safari） */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 优化文本选择 */
+body {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ========== 移动端导航优化 ========== */
+
+@media (max-width: 768px) {
+  /* 导航栏横向滚动优化 */
+  .nav-menu {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-btn {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+
+  /* 当前页面按钮自动滚动到视图中心 */
+  .nav-btn.active {
+    scroll-margin-left: 50%;
+    scroll-margin-right: 50%;
+  }
+}
+
+/* ========== 移动端卡片优化 ========== */
+
+@media (max-width: 768px) {
+  /* 卡片间距优化 */
+  .quick-action-card,
+  .category-card-modern,
+  .stat-card-modern {
+    margin-bottom: 0.75rem;
+  }
+
+  /* 卡片触摸反馈 */
+  .quick-action-card:active,
+  .category-card-modern:active {
+    transform: scale(0.98);
+  }
+}
+
+/* ========== 移动端练习界面优化 ========== */
+
+@media (max-width: 768px) {
+  /* 题目内容字体优化 */
+  .question-content h3,
+  .question-text {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  /* 选项按钮优化 */
+  .option-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  /* 按钮组优化 */
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* 底部操作栏固定 */
+  .practice-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 0.75rem;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+  }
+
+  /* 为底部操作栏留出空间 */
+  .practice-area {
+    padding-bottom: 80px;
+  }
+}
+
+/* ========== 移动端表单优化 ========== */
+
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* 防止iOS自动缩放 */
+    padding: 0.75rem;
+  }
+
+  /* 文本域优化 */
+  textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+}
+
+/* ========== 移动端弹窗优化 ========== */
+
+@media (max-width: 768px) {
+  .modal,
+  .popup {
+    max-width: 95vw;
+    max-height: 90vh;
+    margin: 5vh auto;
+  }
+
+  .modal-content {
+    padding: 1rem;
+  }
+
+  /* 模态框全屏显示 */
+  .modal-overlay {
+    padding: 1rem;
+  }
+}
+
+/* ========== 移动端滚动优化 ========== */
+
+/* 平滑滚动 */
+@media (max-width: 768px) {
+  * {
+    scroll-behavior: smooth;
+  }
+
+  /* 优化滚动性能 */
+  .main {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
+  }
+}
+
+/* ========== 移动端返回顶部按钮优化 ========== */
+
+@media (max-width: 768px) {
+  .back-to-top {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+  }
+}
+
+/* ========== 移动端统计卡片优化 ========== */
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .stat-card-modern {
+    padding: 1rem;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+}
+
+/* ========== 移动端快捷操作卡片优化 ========== */
+
+@media (max-width: 768px) {
+  .quick-actions {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .quick-action-card {
+    padding: 1rem;
+  }
+
+  .action-icon {
+    font-size: 2rem;
+  }
+
+  .action-content h3 {
+    font-size: 1rem;
+  }
+
+  .action-content p {
+    font-size: 0.85rem;
+  }
+}
+
+/* ========== 移动端学习路径卡片优化 ========== */
+
+@media (max-width: 768px) {
+  .category-grid-modern {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .category-card-modern {
+    padding: 1.25rem;
+  }
+
+  .category-title {
+    font-size: 1.1rem;
+  }
+
+  .category-stats {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+/* ========== 移动端练习头部优化 ========== */
+
+@media (max-width: 768px) {
+  .practice-header,
+  .review-header {
+    flex-wrap: wrap;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .meta-tag,
+  .question-number,
+  .category-tag {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .progress-info {
+    width: 100%;
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+}
+
+/* ========== 移动端按钮组优化 ========== */
+
+@media (max-width: 768px) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-start-practice {
+    width: 100%;
+    min-height: 48px;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+
+  .button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .button-group.horizontal {
+    flex-direction: row;
+  }
+
+  .button-group.horizontal button {
+    flex: 1;
+  }
+}
+
+/* ========== 移动端错题本优化 ========== */
+
+@media (max-width: 768px) {
+  .wrong-item,
+  .note-item,
+  .favorite-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+  }
+
+  .item-actions button {
+    flex: 1;
+    min-width: calc(50% - 0.25rem);
+  }
+}
+
+/* ========== 移动端输入区域优化 ========== */
+
+@media (max-width: 768px) {
+  .question-ids-textarea,
+  .filename-input {
+    font-size: 16px; /* 防止iOS缩放 */
+    min-height: 100px;
+  }
+
+  .input-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .input-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+/* ========== 移动端搜索结果优化 ========== */
+
+@media (max-width: 768px) {
+  .search-results-preview {
+    max-height: 300px;
+  }
+
+  .result-item {
+    padding: 0.75rem;
+  }
+
+  .result-number {
+    min-width: 50px;
+    font-size: 0.85rem;
+  }
+
+  .result-text {
+    font-size: 0.85rem;
+  }
+}
+
+/* ========== 移动端笔记区域优化 ========== */
+
+@media (max-width: 768px) {
+  .note-input,
+  .note-display {
+    font-size: 16px;
+    padding: 0.75rem;
+  }
+
+  .note-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .note-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+/* ========== 移动端页面切换动画优化 ========== */
+
+@media (max-width: 768px) {
+  .home-view,
+  .practice-view,
+  .review-view {
+    animation-duration: 0.2s;
+  }
+}
+
+/* ========== 移动端横屏优化 ========== */
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .header {
+    padding: 0.5rem 1rem;
+  }
+
+  .header-content {
+    height: 48px;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .nav-container {
+    padding: 0 1rem;
+  }
+}
+
+/* ========== 移动端安全区域适配（iPhone X+）========== */
+
+@supports (padding: max(0px)) {
+  @media (max-width: 768px) {
+    .header {
+      padding-left: max(1rem, env(safe-area-inset-left));
+      padding-right: max(1rem, env(safe-area-inset-right));
+      padding-top: max(0.75rem, env(safe-area-inset-top));
+    }
+
+    .practice-actions {
+      padding-left: max(0.75rem, env(safe-area-inset-left));
+      padding-right: max(0.75rem, env(safe-area-inset-right));
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+
+    .back-to-top {
+      right: max(1.5rem, env(safe-area-inset-right));
+      bottom: max(1.5rem, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* ========== 移动端暗黑模式支持 ========== */
+
+@media (prefers-color-scheme: dark) {
+  @media (max-width: 768px) {
+    body {
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #5568d3 0%, #6441a5 100%);
+    }
+
+    .quick-action-card,
+    .category-card-modern,
+    .stat-card-modern {
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+  }
+}
+
+/* ========== 移动端打印优化 ========== */
+
+@media print and (max-width: 768px) {
+  .header,
+  .nav,
+  .back-to-top,
+  .practice-actions {
+    display: none;
+  }
+
+  .main {
+    padding: 0;
+  }
+}
+
+/* ========== 移动端可访问性优化 ========== */
+
+@media (max-width: 768px) {
+  /* 焦点样式优化 */
+  button:focus,
+  a:focus,
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+  }
+
+  /* 跳过导航链接（屏幕阅读器） */
+  .skip-to-content {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #667eea;
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 1000;
+  }
+
+  .skip-to-content:focus {
+    top: 0;
+  }
+}

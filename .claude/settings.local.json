@@ -50,7 +50,10 @@
       "Bash(sed -i '502s/^[[:space:]]*/      /' src/App.vue)",
       "Bash(read id:*)",
       "Bash(./rebuild-frontend.sh)",
-      "Bash(./rebuild-backend.sh)"
+      "Bash(./rebuild-backend.sh)",
+      "Bash(rm frontend/src/components/PracticeMode.vue)",
+      "Bash(cp frontend/src/components/PracticeMode.vue.backup-20260404-141641 frontend/src/components/PracticeMode.vue)",
+      "Bash(sed:*)"
     ]
   },
   "outputStyle": "Explanatory",

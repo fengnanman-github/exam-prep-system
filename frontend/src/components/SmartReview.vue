@@ -54,6 +54,7 @@
     <!-- 答题区域 -->
     <div v-if="currentQuestion" class="review-area">
       <div class="review-header">
+        <span class="question-number">🔢 题号：{{ currentQuestion.question_no || currentQuestion.id }}</span>
         <span class="category-tag">{{ currentQuestion.law_category || currentQuestion.category }}</span>
         <span v-if="currentQuestion.tech_category" class="tech-tag">{{ currentQuestion.tech_category }}</span>
         <span class="review-count">
@@ -674,6 +675,15 @@ export default {
   padding-bottom: 1rem;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.question-number {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .category-tag {

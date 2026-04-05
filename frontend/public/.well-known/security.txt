@@ -1,0 +1,96 @@
+# 安全策略 - Security.txt
+# 遵循 RFC 9116 标准
+
+# ========== 联系方式 ==========
+Contact: mailto:security@your-domain.com
+Contact: tel:+86-XXX-XXXX-XXXX
+
+# ========== 安全披露政策 ==========
+# 我们欢迎安全研究人员帮助我们改进系统安全性
+
+# 研究范围（允许测试的范围）
+Allow:
+  - 认证绕过测试
+  - 权限提升测试
+  - SQL注入测试
+  - XSS/CSRF测试
+  - 业务逻辑漏洞测试
+
+# 禁止的行为
+Deny:
+  - 拒绝服务攻击（DoS/DDoS）
+  - 社会工程攻击
+  - 破坏数据或系统
+  - 影响用户体验的测试
+  - 暴力破解（超过每秒5次请求）
+
+# 研究限制
+Limitations:
+  - 只能在测试环境中进行
+  - 不得访问真实用户数据
+  - 不得复制或下载敏感数据
+  - 发现漏洞后24小时内披露
+
+# ========== 加密要求 ==========
+Encryption:
+  - 传输加密：TLS 1.2+
+  - 存储加密：敏感数据加密存储
+  - 密码哈希：bcrypt 12+ rounds
+
+# ========== 安全最佳实践 ==========
+Best-Practices:
+  - 定期安全更新
+  - 漏洞扫描程序
+  - 渗透测试
+  - 安全代码审计
+  - 员工安全培训
+
+# ========== 隐私保护 ==========
+Privacy:
+  - 遵守GDPR要求
+  - 数据最小化原则
+  - 用户数据删除权
+  - 数据访问日志
+  - 隐私政策: https://your-domain.com/privacy
+
+# ========== 安全标准 ==========
+Compliance:
+  - 等保2.0标准
+  - ISO 27001
+  - SOC 2 Type II
+  - OWASP Top 10
+
+# ========== 安全响应承诺 ==========
+Response-Commitment:
+  - 24小时内确认收到的漏洞报告
+  - 72小时内提供修复计划
+  - 90天内修复高危漏洞
+  - 奖励计划：500-5000元人民币
+
+# ========== 语言偏好 ==========
+Preferred-Language: zh-CN
+# 我们优先使用中文进行沟通
+
+# ========== 网站架构 ==========
+Architecture:
+  Frontend: Vue.js 3 + Vite
+  Backend: Node.js + Express
+  Database: PostgreSQL
+  Cache: Redis
+  Deployment: Docker + Nginx
+
+# ========== 安全功能 ==========
+Security-Features:
+  - 多因素认证支持
+  - 账户锁定机制
+  - 速率限制
+  - 会话管理
+  - 审计日志
+  - 数据加密
+
+# ========== 公开指纹 ==========
+# 用于验证网站真实性
+Acknowledgments:
+  - 使用Vue.js框架: https://vuejs.org/
+  - 使用Express.js: https://expressjs.com/
+  - 使用PostgreSQL: https://www.postgresql.org/

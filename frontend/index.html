@@ -2,9 +2,48 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>密评备考系统 - 商用密码应用安全性评估从业人员考核备考平台</title>
     <meta name="description" content="专业密评考试备考系统，提供5,000+题库、智能练习、错题管理等功能">
+
+    <!-- 移动端优化 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="密评备考">
+
+    <!-- 主题色 -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+
+    <!-- PWA相关 -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+
+    <!-- 预连接优化 -->
+    <link rel="preconnect" href="http://localhost:13000">
+    <link rel="dns-prefetch" href="http://localhost:13000">
+
+    <!-- 防止点击延迟 -->
+    <script>
+      // 移动端300ms点击延迟修复
+      if ('addEventListener' in document) {
+        document.addEventListener('DOMContentLoaded', function() {
+          var fastClick = document.body.addEventListener('touchstart', function() {}, false);
+        });
+      }
+    </script>
+
+    <!-- iOS Safari优化 -->
+    <style>
+      /* 防止iOS Safari自动缩放 */
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+    </style>
 </head>
 <body>
     <div id="app"></div>

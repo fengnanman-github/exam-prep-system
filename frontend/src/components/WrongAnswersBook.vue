@@ -7,9 +7,54 @@
       <p>待复习题目: <strong>{{ wrongStats.need_review || 0 }}</strong></p>
     </div>
 
+    <!-- 批量操作栏 -->
+    <div v-if="wrongAnswers.length > 0" class="bulk-actions">
+      <div class="bulk-select">
+        <input
+          type="checkbox"
+          :id="'select-all'"
+          v-model="isAllSelected"
+          @change="toggleSelectAll"
+        >
+        <label :for="'select-all'" class="select-all-label">
+          全选 (已选 {{ selectedCount }}/{{ wrongAnswers.length }})
+        </label>
+      </div>
+      <div class="bulk-buttons">
+        <button
+          @click="bulkPractice"
+          :disabled="selectedCount === 0"
+          class="btn bulk-practice-btn"
+        >
+          🚀 批量练习 ({{ selectedCount }})
+        </button>
+        <button
+          @click="bulkRemove"
+          :disabled="selectedCount === 0"
+          class="btn bulk-remove-btn"
+        >
+          🗑️ 批量删除 ({{ selectedCount }})
+        </button>
+      </div>
+    </div>
+
     <div v-if="wrongAnswers.length > 0" class="wrong-list">
-      <div v-for="item in wrongAnswers" :key="item.id" class="wrong-item">
-        <div class="wrong-question" @click="practiceQuestion(item.question_id)" style="cursor: pointer;">
+      <div
+        v-for="item in wrongAnswers"
+        :key="item.id"
+        class="wrong-item"
+        :class="{ 'selected': selectedItems.has(item.question_id) }"
+      >
+        <div class="checkbox-column">
+          <input
+            type="checkbox"
+            :id="'wrong-' + item.question_id"
+            :value="item.question_id"
+            v-model="selectedItemsSet"
+            @change="updateSelectedCount"
+          >
+        </div>
+        <div class="wrong-question" @click="practiceQuestion(item.question_id)">
           <h4>题目 {{ item.question_no }} ({{ item.question_type }}) <span class="click-hint">🖱️ 点击练习</span></h4>
           <p>{{ item.question_text }}</p>
           <div class="wrong-meta">
@@ -41,7 +86,21 @@ export default {
   data() {
     return {
       wrongAnswers: [],
-      wrongStats: {}
+      wrongStats: {},
+      selectedItems: new Set(),
+      isAllSelected: false,
+      selectedCount: 0
+    }
+  },
+  computed: {
+    selectedItemsSet: {
+      get() {
+        return Array.from(this.selectedItems)
+      },
+      set(value) {
+        this.selectedItems = new Set(value)
+        this.updateSelectedCount()
+      }
     }
   },
   methods: {
@@ -61,6 +120,70 @@ export default {
         this.wrongStats = response.data
       } catch (error) {
         console.error('加载错题统计失败:', error)
+      }
+    },
+
+    toggleSelectAll() {
+      if (this.isAllSelected) {
+        // 全选
+        this.wrongAnswers.forEach(item => {
+          this.selectedItems.add(item.question_id)
+        })
+      } else {
+        // 取消全选
+        this.selectedItems.clear()
+      }
+      this.updateSelectedCount()
+    },
+
+    updateSelectedCount() {
+      this.selectedCount = this.selectedItems.size
+      this.isAllSelected = this.selectedCount > 0 && this.selectedCount === this.wrongAnswers.length
+    },
+
+    async bulkPractice() {
+      if (this.selectedCount === 0) {
+        alert('请先选择要练习的错题')
+        return
+      }
+
+      // 获取选中题目的question_no
+      const questionNos = this.wrongAnswers
+        .filter(item => this.selectedItems.has(item.question_id))
+        .map(item => item.question_no)
+
+      // 触发批量练习
+      this.$emit('start-practice', questionNos.join(','))
+    },
+
+    async bulkRemove() {
+      if (this.selectedCount === 0) {
+        alert('请先选择要删除的错题')
+        return
+      }
+
+      if (!confirm(`确定要删除选中的 ${this.selectedCount} 道错题吗？`)) {
+        return
+      }
+
+      try {
+        // 批量删除
+        const deletePromises = Array.from(this.selectedItems).map(questionId =>
+          axios.delete(`${API_BASE}/wrong-answers/${this.userId}/${questionId}`)
+        )
+
+        await Promise.all(deletePromises)
+
+        // 清空选择
+        this.selectedItems.clear()
+        this.updateSelectedCount()
+
+        // 重新加载列表
+        await this.loadWrongAnswers()
+        this.$emit('wrong-answer-removed')
+      } catch (error) {
+        console.error('批量删除错题失败:', error)
+        alert('删除失败，请重试')
       }
     },
 
@@ -131,6 +254,84 @@ export default {
   border-radius: 6px;
 }
 
+.bulk-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #e3f2fd;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border: 1px solid #bbdefb;
+}
+
+.bulk-select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bulk-select input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.select-all-label {
+  font-size: 0.95rem;
+  color: #1976d2;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bulk-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.bulk-practice-btn,
+.bulk-remove-btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.bulk-practice-btn {
+  background: #1976d2;
+  color: white;
+}
+
+.bulk-practice-btn:hover:not(:disabled) {
+  background: #1565c0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+.bulk-practice-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bulk-remove-btn {
+  background: #f44336;
+  color: white;
+}
+
+.bulk-remove-btn:hover:not(:disabled) {
+  background: #d32f2f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.bulk-remove-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .wrong-list {
   display: flex;
   flex-direction: column;
@@ -142,10 +343,16 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  border: 1px solid #e0e0e0;
+  border: 2px solid #e0e0e0;
   border-radius: 6px;
   background: #fafafa;
   transition: all 0.3s;
+}
+
+.wrong-item.selected {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
 }
 
 .wrong-item:hover {
@@ -153,8 +360,21 @@ export default {
   transform: translateY(-2px);
 }
 
+.checkbox-column {
+  display: flex;
+  align-items: center;
+  padding-right: 1rem;
+}
+
+.checkbox-column input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
 .wrong-question {
   flex: 1;
+  cursor: pointer;
 }
 
 .wrong-question h4 {
@@ -225,10 +445,30 @@ export default {
     gap: 0.5rem;
   }
 
+  .bulk-actions {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .bulk-buttons {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .bulk-practice-btn,
+  .bulk-remove-btn {
+    flex: 1;
+  }
+
   .wrong-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+  }
+
+  .checkbox-column {
+    padding-right: 0;
+    padding-bottom: 0.5rem;
   }
 }
 </style>

@@ -14,6 +14,15 @@
 
         <!-- 右侧操作区 -->
         <div class="header-actions">
+          <!-- 移动端菜单按钮 -->
+          <button v-if="isMobile" @click="toggleMobileMenu" class="mobile-menu-btn">
+            <span class="hamburger-icon" :class="{ active: showMobileMenu }">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+
           <!-- 已登录用户信息 -->
           <div v-if="authStore.isAuthenticated" class="user-section">
             <!-- 用户下拉菜单 -->
@@ -64,64 +73,102 @@
     <!-- 导航栏 -->
     <nav class="nav">
       <div class="nav-container">
-        <div class="nav-menu">
+        <!-- 桌面端导航 -->
+        <div class="nav-menu" v-if="!isMobile">
+          <!-- 公开页面导航 -->
           <button @click="currentView = 'home'" :class="{ active: currentView === 'home' }" class="nav-btn">
             <span class="nav-icon">🏠</span>
             <span class="nav-text">首页</span>
           </button>
-          <button @click="currentView = 'practice'" :class="{ active: currentView === 'practice' }" class="nav-btn">
-            <span class="nav-icon">🎯</span>
-            <span class="nav-text">练习</span>
-          </button>
-          <button @click="currentView = 'category-practice'" :class="{ active: currentView === 'category-practice' }" class="nav-btn">
-            <span class="nav-icon">📂</span>
-            <span class="nav-text">分类</span>
-          </button>
-          <button @click="currentView = 'exam-category-practice'" :class="{ active: currentView === 'exam-category-practice' }" class="nav-btn highlight-btn">
-            <span class="nav-icon">🎯</span>
-            <span class="nav-text">考试类别</span>
-          </button>
-          <button @click="currentView = 'document-review'" :class="{ active: currentView === 'document-review' }" class="nav-btn">
-            <span class="nav-icon">📖</span>
-            <span class="nav-text">文档</span>
-          </button>
-          <button @click="currentView = 'smart-review'" :class="{ active: currentView === 'smart-review' }" class="nav-btn">
-            <span class="nav-icon">🧠</span>
-            <span class="nav-text">复习</span>
-          </button>
-          <button @click="currentView = 'wrong-answers'" :class="{ active: currentView === 'wrong-answers' }" class="nav-btn">
-            <span class="nav-icon">📚</span>
-            <span class="nav-text">错题</span>
-          </button>
-          <button @click="currentView = 'progress'" :class="{ active: currentView === 'progress' }" class="nav-btn">
-            <span class="nav-icon">📊</span>
-            <span class="nav-text">进度</span>
-          </button>
-          <button @click="currentView = 'mock-exam'" :class="{ active: currentView === 'mock-exam' }" class="nav-btn">
-            <span class="nav-icon">📝</span>
-            <span class="nav-text">考试</span>
-          </button>
-          <button
-            v-if="authStore.isAdmin()"
-            @click="currentView = 'question-admin'"
-            :class="{ active: currentView === 'question-admin' }"
-            class="nav-btn admin-btn"
-          >
-            <span class="nav-icon">🔧</span>
-            <span class="nav-text">题目管理</span>
-          </button>
-          <button
-            v-if="authStore.isAdmin()"
-            @click="currentView = 'admin-config'"
-            :class="{ active: currentView === 'admin-config' }"
-            class="nav-btn admin-btn"
-          >
-            <span class="nav-icon">⚙️</span>
-            <span class="nav-text">系统配置</span>
-          </button>
+
+          <!-- 已登录用户的功能导航 -->
+          <template v-if="authStore.isAuthenticated">
+            <button @click="navigateTo('practice')" :class="{ active: currentView === 'practice' }" class="nav-btn">
+              <span class="nav-icon">🎯</span>
+              <span class="nav-text">练习</span>
+            </button>
+            <button @click="navigateTo('category-practice')" :class="{ active: currentView === 'category-practice' }" class="nav-btn">
+              <span class="nav-icon">📂</span>
+              <span class="nav-text">分类</span>
+            </button>
+            <button @click="navigateTo('exam-category-practice')" :class="{ active: currentView === 'exam-category-practice' }" class="nav-btn highlight-btn">
+              <span class="nav-icon">🎯</span>
+              <span class="nav-text">考试类别</span>
+            </button>
+            <button @click="navigateTo('document-review')" :class="{ active: currentView === 'document-review' }" class="nav-btn">
+              <span class="nav-icon">📖</span>
+              <span class="nav-text">文档</span>
+            </button>
+            <button @click="navigateTo('smart-review')" :class="{ active: currentView === 'smart-review' }" class="nav-btn">
+              <span class="nav-icon">🧠</span>
+              <span class="nav-text">复习</span>
+            </button>
+            <button @click="navigateTo('intelligent-review')" :class="{ active: currentView === 'intelligent-review' }" class="nav-btn highlight-btn">
+              <span class="nav-icon">⚡</span>
+              <span class="nav-text">智能复习+</span>
+            </button>
+            <button @click="navigateTo('wrong-answers')" :class="{ active: currentView === 'wrong-answers' }" class="nav-btn">
+              <span class="nav-icon">📚</span>
+              <span class="nav-text">错题</span>
+            </button>
+            <button @click="navigateTo('progress')" :class="{ active: currentView === 'progress' }" class="nav-btn">
+              <span class="nav-icon">📊</span>
+              <span class="nav-text">进度</span>
+            </button>
+            <button @click="navigateTo('mock-exam')" :class="{ active: currentView === 'mock-exam' }" class="nav-btn">
+              <span class="nav-icon">📝</span>
+              <span class="nav-text">考试</span>
+            </button>
+
+            <!-- 管理员专用功能 -->
+            <template v-if="authStore.isAdmin()">
+              <button @click="navigateTo('question-admin')" :class="{ active: currentView === 'question-admin' }" class="nav-btn admin-btn">
+                <span class="nav-icon">🔧</span>
+                <span class="nav-text">题目管理</span>
+              </button>
+              <button @click="navigateTo('admin-config')" :class="{ active: currentView === 'admin-config' }" class="nav-btn admin-btn">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-text">系统配置</span>
+              </button>
+            </template>
+          </template>
+
+          <!-- 未登录时的信息提示 -->
+          <template v-else>
+            <div class="nav-info-text">
+              <span>登录后解锁完整功能</span>
+            </div>
+          </template>
         </div>
       </div>
     </nav>
+
+    <!-- 移动端侧边栏 -->
+    <div v-if="isMobile" class="mobile-sidebar" :class="{ active: showMobileMenu }">
+      <div class="sidebar-overlay" @click="closeMobileMenu"></div>
+      <div class="sidebar-content" @click.stop>
+        <div class="sidebar-header">
+          <div class="sidebar-brand">
+            <span class="sidebar-logo">🔐</span>
+            <span class="sidebar-title">密评备考</span>
+          </div>
+          <button @click="closeMobileMenu" class="sidebar-close">✕</button>
+        </div>
+        <div class="sidebar-nav">
+          <button
+            v-for="item in navItems"
+            :key="item.view"
+            @click="navigateTo(item.view)"
+            :class="{ active: currentView === item.view }"
+            class="sidebar-nav-item"
+          >
+            <span class="nav-item-icon">{{ item.icon }}</span>
+            <span class="nav-item-text">{{ item.text }}</span>
+            <span v-if="item.badge" class="nav-item-badge">{{ item.badge }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <main class="main" id="main-content">
       <!-- 首页视图 -->
@@ -387,6 +434,12 @@
         @back="handleBackToHome"
       />
 
+      <!-- 智能复习+（增强版） -->
+      <IntelligentReview
+        v-if="currentView === 'intelligent-review'"
+        @back="handleBackToHome"
+      />
+
       <!-- 专项练习 -->
       <CustomPractice
         v-if="currentView === 'custom-practice'"
@@ -461,6 +514,7 @@ import CategoryPractice from './components/CategoryPractice.vue'
 import ExamCategoryPractice from './components/ExamCategoryPractice.vue'
 import MockExam from './components/MockExam.vue'
 import SmartReview from './components/SmartReview.vue'
+import IntelligentReview from './components/IntelligentReview.vue'
 import WrongAnswersBook from './components/WrongAnswersBook.vue'
 import ProgressStats from './components/ProgressStats.vue'
 import LoginModal from './components/LoginModal.vue'
@@ -481,6 +535,7 @@ export default {
     ExamCategoryPractice,
     MockExam,
     SmartReview,
+    IntelligentReview,
     WrongAnswersBook,
     ProgressStats,
     LoginModal,
@@ -500,18 +555,80 @@ export default {
       authStore,
       showBackToTop: false,
       showUserMenu: false,
-      customPracticeQuestionIds: null // 用于专项练习的题目ID
+      showMobileMenu: false,
+      isMobile: false,
+      customPracticeQuestionIds: null, // 用于专项练习的题目ID
+      isRestoringView: false // 标记是否正在恢复视图
     }
   },
   computed: {
     // 动态获取当前用户ID
     currentUserId() {
       return this.authStore.getCurrentUserId()
+    },
+    // 导航菜单项
+    navItems() {
+      const items = [
+        { view: 'home', icon: '🏠', text: '首页' },
+        { view: 'practice', icon: '🎯', text: '练习' },
+        { view: 'category-practice', icon: '📂', text: '分类' },
+        { view: 'exam-category-practice', icon: '🎯', text: '考试类别', highlight: true },
+        { view: 'document-review', icon: '📖', text: '文档' },
+        { view: 'smart-review', icon: '🧠', text: '复习', badge: this.wrongStats.need_review > 0 ? this.wrongStats.need_review : null },
+        { view: 'intelligent-review', icon: '⚡', text: '智能复习+', highlight: true },
+        { view: 'wrong-answers', icon: '📚', text: '错题', badge: this.wrongStats.total_wrong > 0 ? this.wrongStats.total_wrong : null },
+        { view: 'progress', icon: '📊', text: '进度' },
+        { view: 'mock-exam', icon: '📝', text: '考试' }
+      ]
+
+      // 管理员菜单
+      if (this.authStore.isAdmin()) {
+        items.push(
+          { view: 'question-admin', icon: '🔧', text: '题目管理', admin: true },
+          { view: 'admin-config', icon: '⚙️', text: '系统配置', admin: true }
+        )
+      }
+
+      return items
+    }
+  },
+  watch: {
+    // 监听视图变化，保存到localStorage
+    currentView(newView, oldView) {
+      if (!this.isRestoringView && newView !== oldView) {
+        // 保存当前视图状态
+        const viewState = {
+          currentView: newView,
+          timestamp: Date.now()
+        }
+        localStorage.setItem('exam_prep_view_state', JSON.stringify(viewState))
+
+        // 如果有专项练习题目ID，也保存
+        if (newView === 'custom-practice' && this.customPracticeQuestionIds) {
+          localStorage.setItem('exam_prep_custom_practice_ids', this.customPracticeQuestionIds)
+        }
+
+        // 如果有选中的分类，也保存
+        if (newView === 'category-practice' && this.selectedCategory) {
+          localStorage.setItem('exam_prep_selected_category', this.selectedCategory)
+        }
+
+        console.log('💾 视图状态已保存:', newView)
+      }
     }
   },
   async mounted() {
     // 初始化认证状态
     this.authStore.init()
+
+    // 检测是否为移动设备
+    this.checkMobile()
+
+    // 添加窗口大小监听
+    window.addEventListener('resize', this.checkMobile)
+
+    // 恢复上次的视图
+    this.restoreView()
 
     // 加载数据
     await this.loadStats()
@@ -527,9 +644,139 @@ export default {
   beforeUnmount() {
     // 移除事件监听
     window.removeEventListener('scroll', this.handleScroll)
+    window.removeEventListener('resize', this.checkMobile)
     document.removeEventListener('click', this.handleClickOutside)
   },
   methods: {
+    /**
+     * 安全导航方法
+     * 检查用户权限后导航到指定页面
+     */
+    navigateTo(view) {
+      // 检查用户是否已登录
+      if (!this.authStore.isAuthenticated) {
+        // 未登录，显示登录提示并打开登录模态框
+        this.showSecurityPrompt('login_required');
+        return;
+      }
+
+      // 检查管理员权限
+      if ((view === 'question-admin' || view === 'admin-config') && !this.authStore.isAdmin()) {
+        this.showSecurityPrompt('insufficient_permissions');
+        return;
+      }
+
+      // 权限检查通过，执行导航
+      this.currentView = view;
+      this.closeMobileMenu();
+    },
+
+    /**
+     * 显示安全提示
+     */
+    showSecurityPrompt(type) {
+      const prompts = {
+        login_required: {
+          title: '请先登录',
+          message: '您需要登录后才能使用此功能',
+          type: 'warning',
+          actions: [
+            {
+              text: '立即登录',
+              primary: true,
+              handler: () => this.openLoginModal()
+            },
+            {
+              text: '注册账号',
+              primary: false,
+              handler: () => this.currentView = 'register'
+            }
+          ]
+        },
+        insufficient_permissions: {
+          title: '权限不足',
+          message: '您当前没有权限访问此功能',
+          type: 'error',
+          actions: [
+            {
+              text: '返回首页',
+              primary: true,
+              handler: () => this.currentView = 'home'
+            }
+          ]
+        }
+      };
+
+      const prompt = prompts[type];
+      if (prompt) {
+        // 显示提示信息
+        console.warn(`[SECURITY] ${prompt.title}: ${prompt.message}`);
+
+        // 如果是登录要求，自动打开登录模态框
+        if (type === 'login_required') {
+          this.openLoginModal();
+        } else {
+          // 显示简单的提示信息
+          alert(`${prompt.title}\n${prompt.message}`);
+        }
+      }
+    },
+
+    /**
+     * 恢复上次的视图状态
+     */
+    restoreView() {
+      try {
+        const savedState = localStorage.getItem('exam_prep_view_state')
+        if (savedState) {
+          const viewState = JSON.parse(savedState)
+
+          // 检查是否在30分钟内（避免恢复过久的状态）
+          const thirtyMinutes = 30 * 60 * 1000
+          const isRecent = viewState.timestamp && (Date.now() - viewState.timestamp) < thirtyMinutes
+
+          if (isRecent && viewState.currentView && viewState.currentView !== 'home') {
+            this.isRestoringView = true
+            this.currentView = viewState.currentView
+
+            // 恢复专项练习题目ID
+            if (viewState.currentView === 'custom-practice') {
+              const customIds = localStorage.getItem('exam_prep_custom_practice_ids')
+              if (customIds) {
+                this.customPracticeQuestionIds = customIds
+              }
+            }
+
+            // 恢复选中的分类
+            if (viewState.currentView === 'category-practice') {
+              const category = localStorage.getItem('exam_prep_selected_category')
+              if (category) {
+                this.selectedCategory = category
+              }
+            }
+
+            console.log('✅ 视图状态已恢复:', viewState.currentView)
+
+            // 延迟重置标志，确保watch不会重复保存
+            setTimeout(() => {
+              this.isRestoringView = false
+            }, 100)
+          } else {
+            // 清除过期的状态
+            localStorage.removeItem('exam_prep_view_state')
+            localStorage.removeItem('exam_prep_custom_practice_ids')
+            localStorage.removeItem('exam_prep_selected_category')
+          }
+        }
+      } catch (error) {
+        console.error('❌ 恢复视图状态失败:', error)
+        // 清除损坏的状态
+        localStorage.removeItem('exam_prep_view_state')
+        localStorage.removeItem('exam_prep_custom_practice_ids')
+        localStorage.removeItem('exam_prep_selected_category')
+      }
+    },
+
     handleClickOutside(event) {
       // 如果点击的不是用户下拉菜单区域，关闭菜单
       const userSection = this.$el.querySelector('.user-section')
@@ -664,6 +911,10 @@ export default {
       this.currentView = 'home'
       // 清空专项练习题目ID
       this.customPracticeQuestionIds = null
+      // 清除保存的视图状态
+      localStorage.removeItem('exam_prep_view_state')
+      localStorage.removeItem('exam_prep_custom_practice_ids')
+      localStorage.removeItem('exam_prep_selected_category')
       // 刷新统计数据以显示最新的练习进度
       await this.loadStats()
       await this.loadWrongStats()
@@ -707,6 +958,10 @@ export default {
     handleLogout() {
       if (confirm('确定要登出吗？')) {
         this.authStore.logout()
+        // 清除保存的视图状态
+        localStorage.removeItem('exam_prep_view_state')
+        localStorage.removeItem('exam_prep_custom_practice_ids')
+        localStorage.removeItem('exam_prep_selected_category')
         // 刷新统计数据以显示默认用户的数据
         this.loadStats()
         this.loadWrongStats()
@@ -729,6 +984,42 @@ export default {
         top: 0,
         behavior: 'smooth'
       })
+    },
+
+    /**
+     * 检测是否为移动设备
+     */
+    checkMobile() {
+      this.isMobile = window.innerWidth < 768
+    },
+
+    /**
+     * 切换移动端菜单
+     */
+    toggleMobileMenu() {
+      this.showMobileMenu = !this.showMobileMenu
+      // 阻止背景滚动
+      if (this.showMobileMenu) {
+        document.body.style.overflow = 'hidden'
+      } else {
+        document.body.style.overflow = ''
+      }
+    },
+
+    /**
+     * 关闭移动端菜单
+     */
+    closeMobileMenu() {
+      this.showMobileMenu = false
+      document.body.style.overflow = ''
+    },
+
+    /**
+     * 导航到指定页面
+     */
+    navigateTo(view) {
+      this.currentView = view
+      this.closeMobileMenu()
     }
   }
 }
@@ -1151,7 +1442,218 @@ body {
   }
 }
 
+/* ========== 移动端菜单按钮 ========== */
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 24px;
+  height: 18px;
+  position: relative;
+}
+
+.hamburger-icon span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.hamburger-icon.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger-icon.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-icon.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -6px);
+}
+
+/* ========== 移动端侧边栏 ========== */
+.mobile-sidebar {
+  display: none;
+}
+
+.mobile-sidebar.active {
+  display: block;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.sidebar-content {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background: white;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  animation: slideInLeft 0.3s ease;
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sidebar-logo {
+  font-size: 1.75rem;
+}
+
+.sidebar-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.sidebar-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sidebar-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 0;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #4a5568;
+  font-size: 1rem;
+  position: relative;
+}
+
+.sidebar-nav-item:hover {
+  background: #f7fafc;
+}
+
+.sidebar-nav-item.active {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, transparent 100%);
+  color: #667eea;
+  font-weight: 600;
+}
+
+.sidebar-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.nav-item-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.nav-item-text {
+  flex: 1;
+}
+
+.nav-item-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: block;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  /* 侧边栏只在active时显示 */
+  .mobile-sidebar {
+    display: none;
+  }
+
+  .mobile-sidebar.active {
+    display: block;
+  }
+
   .header {
     padding: 0.75rem 1rem;
   }

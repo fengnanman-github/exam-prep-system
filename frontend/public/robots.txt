@@ -1,0 +1,33 @@
+# robots.txt - 搜索引擎爬取规则
+# 限制搜索引擎索引敏感内容
+
+User-agent: *
+
+# 禁止爬取管理后台和敏感页面
+Disallow: /admin
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+
+# 禁止爬取用户数据相关页面
+Disallow: /practice
+Disallow: /smart-review
+Disallow: /intelligent-review
+Disallow: /wrong-answers
+Disallow: /progress
+Disallow: /document-review
+
+# 禁止爬取API端点
+Disallow: /api/v2/
+Disallow: /api/auth/
+
+# 允许爬取公开信息页面
+Allow: /$
+Allow: /about
+Allow: /help
+
+# 网站地图位置（如果有）
+# Sitemap: https://your-domain.com/sitemap.xml
+
+# 爬取延迟（避免服务器过载）
+Crawl-delay: 1

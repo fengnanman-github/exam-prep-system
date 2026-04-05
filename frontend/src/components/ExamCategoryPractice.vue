@@ -40,7 +40,7 @@
         v-for="category in sortedCategories"
         :key="category.category"
         class="category-card"
-        :class="{ 'high-priority': category.priorityScore > 0.15 }"
+        :class="{ 'high-priority': category.priorityScore > 0.15, 'selected': selectedCategory?.category === category.category }"
         @click="selectCategory(category)"
       >
         <div class="card-header">
@@ -81,13 +81,30 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <div class="card-actions">
-          <button class="btn-practice" @click.stop="startPractice(category, 'random')">
-            🎲 随机练习
+    <!-- 底部操作栏（选择类别后显示） -->
+    <div v-if="selectedCategory && !currentQuestion" class="bottom-action-bar">
+      <div class="action-bar-content">
+        <div class="selected-info">
+          <span class="selected-icon">{{ getCategoryIcon(selectedCategory.category) }}</span>
+          <div class="selected-details">
+            <span class="selected-name">{{ selectedCategory.category }}</span>
+            <span class="selected-stats">{{ selectedCategory.total }}题 · 已练{{ selectedCategory.practiced }}题</span>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button @click="startPractice(selectedCategory, 'new')" class="action-btn primary-btn">
+            <span class="btn-icon">🆕</span>
+            <span class="btn-text">练习新题</span>
           </button>
-          <button class="btn-new" @click.stop="startPractice(category, 'new')">
-            🆕 练习新题
+          <button @click="startPractice(selectedCategory, 'random')" class="action-btn secondary-btn">
+            <span class="btn-icon">🎲</span>
+            <span class="btn-text">随机练习</span>
+          </button>
+          <button @click="selectedCategory = null" class="action-btn cancel-btn">
+            <span class="btn-icon">✕</span>
           </button>
         </div>
       </div>
@@ -931,5 +948,238 @@ export default {
 .btn-next:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ========== 底部操作栏 ========== */
+.bottom-action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideUp 0.3s ease;
+  border-top: 1px solid #e5e7eb;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.action-bar-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.selected-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.selected-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.selected-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.selected-name {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selected-stats {
+  font-size: 0.875rem;
+  color: #718096;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.primary-btn:active {
+  transform: translateY(0);
+}
+
+.secondary-btn {
+  background: #f7fafc;
+  color: #4a5568;
+  border: 2px solid #e2e8f0;
+}
+
+.secondary-btn:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.cancel-btn {
+  padding: 0.875rem;
+  background: #fed7d7;
+  color: #c53030;
+  border-radius: 50%;
+}
+
+.cancel-btn:hover {
+  background: #feb2b2;
+}
+
+.btn-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.btn-text {
+  line-height: 1;
+}
+
+/* 卡片选中状态 */
+.category-card {
+  position: relative;
+}
+
+.category-card.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #edf2f7 0%, #ffffff 100%);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.category-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .action-bar-content {
+    padding: 0.875rem 1rem;
+    gap: 1rem;
+    flex-direction: column;
+  }
+
+  .selected-info {
+    width: 100%;
+  }
+
+  .selected-icon {
+    font-size: 1.75rem;
+  }
+
+  .selected-name {
+    font-size: 0.95rem;
+  }
+
+  .selected-stats {
+    font-size: 0.8rem;
+  }
+
+  .action-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .action-btn {
+    flex: 1;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+    justify-content: center;
+  }
+
+  .cancel-btn {
+    flex: 0 0 auto;
+    width: 44px;
+    padding: 0.875rem 0;
+    justify-content: center;
+  }
+
+  .btn-text {
+    display: inline;
+  }
+}
+
+@media (max-width: 480px) {
+  .action-bar-content {
+    padding: 0.75rem 1rem;
+  }
+
+  .action-buttons {
+    gap: 0.5rem;
+  }
+
+  .action-btn {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.85rem;
+  }
+
+  .btn-icon {
+    font-size: 1rem;
+  }
+
+  .cancel-btn {
+    width: 40px;
+    padding: 0.75rem 0;
+  }
 }
 </style>

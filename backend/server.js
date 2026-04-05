@@ -18,6 +18,22 @@ const performanceMonitor = require('./middleware/performance-monitor');
 const errorTracker = require('./middleware/error-tracker');
 const monitoringApi = require('./monitoring-api');
 
+// 安全中间件
+const rateLimiter = require('./middleware/rate-limiter');
+const {
+  securityHeaders,
+  corsMiddleware,
+  inputValidation,
+  httpsRedirect
+} = require('./middleware/security-headers');
+const {
+  publicAccessControl,
+  detectEnumerationAttack,
+  securityLogging,
+  validateRequestMethod,
+  validateRequestHeaders
+} = require('./middleware/public-access-control');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -30,8 +46,45 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD || 'change_this_password'
 });
 
-// 中间件
+// ========== 安全中间件配置 ==========
+
+// 1. 安全Headers（必须在最前面）
+app.use(securityHeaders);
+
+// 2. HTTPS重定向（仅生产环境）
+if (process.env.NODE_ENV === 'production') {
+  app.use(httpsRedirect);
+}
+
+// 3. 请求方法验证
+app.use(validateRequestMethod);
+
+// 4. 请求头验证
+app.use(validateRequestHeaders);
+
+// 5. 输入验证
+app.use(inputValidation);
+
+// 6. 速率限制（应用在特定路由上）
+app.use('/api/auth/login', rateLimiter.login());
+app.use('/api/auth/register', rateLimiter.passwordReset());
+app.use('/api', rateLimiter.general());
+
+// 7. 枚举攻击检测
+app.use('/api/v2', detectEnumerationAttack);
+
+// 8. 公开访问控制
+app.use('/api/v2', publicAccessControl);
+
+// 9. 安全日志
+app.use(securityLogging);
+
+// ========== 中间件配置 ==========
+
+// CORS配置（保持向后兼容）
 app.use(cors());
+
+// 解析请求体
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
@@ -444,6 +497,22 @@ app.use('/api/v2/documents', bookTitleLabeler(pool));
 const unifiedStatsApi = require('./unified-stats-api');
 app.use('/api/v2/stats', unifiedStatsApi(pool));
 
+// 学习进度API路由
+const learningProgressApi = require('./learning-progress-api');
+app.use('/api/v2/progress', learningProgressApi(pool));
+
+	// 智能复习API路由（增强版）
+	const intelligentReviewApi = require('./intelligent-review-api');
+	app.use('/api/v2/intelligent-review', intelligentReviewApi(pool));
+
+
+	// 题库分析API路由（80分目标优化）
+	const questionBankAnalysisApi = require('./question-bank-analysis');
+	app.use('/api/v2/analysis', questionBankAnalysisApi(pool));
+
+	// 智能复习API路由v2（80分目标优化）
+	const intelligentReviewApiV2 = require('./intelligent-review-api-v2');
+	app.use('/api/v2/intelligent-review/v2', intelligentReviewApiV2(pool));
 // 智能推荐API路由
 const smartRecommendationApi = require('./smart-recommendation-api');
 app.use('/api/v2/smart', smartRecommendationApi(pool));
@@ -471,6 +540,10 @@ app.use('/api/v2/unified', unifiedStateRouter(pool));
 // 统一练习API
 const unifiedPracticeRouter = require('./unified-core/unified-practice');
 app.use('/api/v2/unified', unifiedPracticeRouter(pool));
+
+// 题目搜索API
+const questionSearchApi = require('./question-search-api');
+app.use('/api/questions', questionSearchApi);
 
 // 版本管理API
 const { getInstance: getVersionManager } = require('./unified-core/version-manager');
