@@ -53,7 +53,8 @@
       "Bash(./rebuild-backend.sh)",
       "Bash(rm frontend/src/components/PracticeMode.vue)",
       "Bash(cp frontend/src/components/PracticeMode.vue.backup-20260404-141641 frontend/src/components/PracticeMode.vue)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(sudo npm:*)"
     ]
   },
   "outputStyle": "Explanatory",
