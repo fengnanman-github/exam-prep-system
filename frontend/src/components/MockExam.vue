@@ -219,9 +219,10 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../utils/api'
+import { authStore } from '../store/auth'
 
-const API_BASE = '/api/v2'
+const API_BASE = '/api'
 
 export default {
   name: 'MockExam',
@@ -271,8 +272,8 @@ export default {
     async loadCategories() {
       try {
         const [lawRes, techRes] = await Promise.all([
-          axios.get(`${API_BASE}/categories/law`),
-          axios.get(`${API_BASE}/categories/tech`)
+          api.get(`${API_BASE}/categories/law`),
+          api.get(`${API_BASE}/categories/tech`)
         ])
         this.lawCategories = lawRes.data
         this.techCategories = techRes.data
@@ -302,7 +303,7 @@ export default {
           tech_categories: this.examConfig.selectedTechCategories
         }
 
-        const response = await axios.post(`${API_BASE}/exam`, {
+        const response = await api.post(`${API_BASE}/exam`, {
           user_id: this.userId,
           exam_name: this.examConfig.name,
           config
@@ -312,7 +313,7 @@ export default {
         const questionIds = response.data.questions
 
         // 获取题目详情
-        const questionsResponse = await axios.post(`${API_BASE}/questions/batch`, {
+        const questionsResponse = await api.post(`${API_BASE}/questions/batch`, {
           ids: questionIds
         })
 
@@ -414,7 +415,7 @@ export default {
           }
         })
 
-        const response = await axios.post(`${API_BASE}/exam/${this.currentExam.id}/submit`, {
+        const response = await api.post(`${API_BASE}/exam/${this.currentExam.id}/submit`, {
           answers: answersArray,
           time_spent: this.elapsedTime
         })

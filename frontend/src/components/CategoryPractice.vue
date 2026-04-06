@@ -6,7 +6,7 @@
         <h2>📚 分类练习</h2>
         <p class="subtitle">按法律法规和技术专业分类练习</p>
       </div>
-      <button @click="$emit('back')" class="btn-back">← 返回首页</button>
+      <button @click="goBack" class="btn-back">← 返回首页</button>
     </div>
 
     <!-- 分类选择 -->
@@ -240,6 +240,7 @@ import { PRACTICE, ERROR_MESSAGES } from '../config/constants'
 const API_BASE = '/api/v2'
 
 export default {
+	inject: ['authStore'],
   name: 'CategoryPractice',
   emits: ['back', 'update-stats', 'complete'],
   data() {
@@ -261,13 +262,10 @@ export default {
       useUnifiedAPI: false
     }
   },
-  props: {
-    userId: {
-      type: String,
-      default: 'exam_user_001'
-    }
-  },
   computed: {
+    userId() {
+      return this.authStore.getCurrentUserId()
+    },
     categoryStats() {
       if (!this.selectedCategory) return {}
       const categories = this.categoryType === 'law' ? this.lawCategories : this.techCategories
@@ -306,6 +304,9 @@ export default {
     await this.loadCategories()
   },
   methods: {
+    goBack() {
+      this.$router.back()
+    },
     async loadCategories() {
       try {
         console.log('开始加载分类数据...')
@@ -604,12 +605,6 @@ export default {
       return 'low'
     }
   },
-  props: {
-    userId: {
-      type: String,
-      required: true
-    }
-  }
 }
 </script>
 

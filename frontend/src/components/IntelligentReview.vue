@@ -2,7 +2,7 @@
   <div class="intelligent-review">
     <!-- 移动端顶部导航栏 -->
     <div class="mobile-top-bar">
-      <button @click="$emit('back')" class="mobile-back-btn">
+      <button @click="goBack" class="mobile-back-btn">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -16,7 +16,7 @@
         <h2>🧠 智能复习+</h2>
         <p class="subtitle">基于遗忘曲线的个性化复习</p>
       </div>
-      <button @click="$emit('back')" class="btn-back">← 返回首页</button>
+      <button @click="goBack" class="btn-back">← 返回首页</button>
     </div>
 
     <!-- 仪表板 -->
@@ -427,13 +427,14 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../utils/api'
+import { authStore } from '../store/auth'
 
 const API_BASE = '/api/v2'
 
 export default {
+	inject: ['authStore'],
   name: 'IntelligentReview',
-  emits: ['back'],
   data() {
     return {
       dashboard: null,
@@ -489,10 +490,13 @@ export default {
     await this.loadDashboard()
   },
   methods: {
+    goBack() {
+      this.$router.back()
+    },
     async loadDashboard() {
       try {
         console.log('正在加载80分目标仪表板数据...')
-        const response = await axios.get(`${API_BASE}/intelligent-review/v2/dashboard/${this.userId}`)
+        const response = await api.get(`${API_BASE}/intelligent-review/v2/dashboard/${this.userId}`)
         console.log('仪表板数据响应:', response.data)
 
         // 合并v2数据与原有数据结构
@@ -579,7 +583,7 @@ export default {
       try {
         let url = `${API_BASE}/intelligent-review/due-questions/${this.userId}?limit=20`
 
-        const response = await axios.get(url)
+        const response = await api.get(url)
         this.questions = response.data.data
         this.currentIndex = 0
         this.showQuestion()
@@ -642,7 +646,7 @@ export default {
 
       // 提交到智能复习API
       try {
-        await axios.post(`${API_BASE}/intelligent-review/submit`, {
+        await api.post(`${API_BASE}/intelligent-review/submit`, {
           user_id: this.userId,
           question_id: this.currentQuestion.question_id,
           is_correct: isCorrect,

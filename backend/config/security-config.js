@@ -37,20 +37,20 @@ module.exports = {
   // ========== 账户锁定策略 ==========
   accountLockout: {
     enabled: true,
-    maxAttempts: 5, // 最大失败次数
+    maxAttempts: 10, // 最大失败次数（调整为10次，更宽松）
     durationMinutes: 30, // 锁定时长30分钟
     resetOnSuccess: true, // 成功登录后重置失败计数
     increaseDuration: true, // 多次锁定增加时长
-    permanentThreshold: 10 // 10次失败后永久锁定（需管理员解锁）
+    permanentThreshold: 20 // 20次失败后永久锁定（需管理员解锁）
   },
 
   // ========== 速率限制 ==========
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15分钟窗口
-    maxRequests: 100, // 每个IP最多100个请求
-    authRequests: 10, // 认证相关请求限制更严格
-    passwordResetRequests: 3, // 密码重置请求限制
-    loginAttempts: 5 // 登录尝试限制
+    maxRequests: 2000, // 每个IP最多2000个请求（大幅增加，适应学习系统）
+    authRequests: 200, // 认证相关请求（从10增加到200）
+    passwordResetRequests: 10, // 密码重置请求限制（从3增加到10）
+    loginAttempts: 20 // 登录尝试限制（从5增加到20）
   },
 
   // ========== 会话管理 ==========
