@@ -61,6 +61,23 @@ export default {
     }
   },
   methods: {
+    getCanvasElement() {
+      // 优先使用 Vue ref，如果不可用则直接查找 DOM
+      if (this.chartCanvas) {
+        return this.chartCanvas
+      }
+
+      // 后备方案：直接查找 DOM 元素
+      const canvas = this.$el?.querySelector('canvas')
+      if (canvas) {
+        console.log('[LearningCurveChart] 通过 DOM 查找找到 canvas 元素')
+        return canvas
+      }
+
+      console.error('[LearningCurveChart] 无法找到 canvas 元素')
+      return null
+    },
+
     formatDate(dateStr) {
       const date = new Date(dateStr)
       return `${date.getMonth() + 1}/${date.getDate()}`
@@ -87,15 +104,9 @@ export default {
 
     initChart() {
       console.log('[LearningCurveChart] initChart 被调用', {
-        hasCanvas: !!this.chartCanvas,
+        hasCanvasRef: !!this.chartCanvas,
         dataLength: this.chartData?.length || 0
       })
-
-      // 检查 canvas 元素是否存在
-      if (!this.chartCanvas) {
-        console.error('[LearningCurveChart] canvas 元素不存在')
-        return
-      }
 
       // 检查数据是否存在
       if (!this.chartData || this.chartData.length === 0) {
@@ -103,9 +114,21 @@ export default {
         return
       }
 
+      // 获取 canvas 元素（使用多种方法）
+      const canvas = this.getCanvasElement()
+      if (!canvas) {
+        console.error('[LearningCurveChart] canvas 元素不存在，延迟重试')
+        // 延迟重试一次
+        setTimeout(() => {
+          console.log('[LearningCurveChart] 延迟重试初始化')
+          this.initChart()
+        }, 100)
+        return
+      }
+
       console.log('[LearningCurveChart] 开始初始化图表')
 
-      const ctx = this.chartCanvas.getContext('2d')
+      const ctx = canvas.getContext('2d')
       if (!ctx) {
         console.error('[LearningCurveChart] 无法获取 canvas context')
         return
@@ -303,13 +326,21 @@ export default {
     updateChart() {
       console.log('[LearningCurveChart] updateChart 被调用', {
         hasChart: !!this.chart,
-        dataLength: this.chartData.length
+        dataLength: this.chartData?.length || 0
       })
 
       if (this.chart) {
         this.chart.destroy()
         this.chart = null
       }
+
+      // 使用相同的方法获取 canvas 元素
+      const canvas = this.getCanvasElement()
+      if (!canvas) {
+        console.error('[LearningCurveChart] updateChart: canvas 元素不存在')
+        return
+      }
+
       this.initChart()
     }
   }
