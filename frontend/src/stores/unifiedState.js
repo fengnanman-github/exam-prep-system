@@ -337,7 +337,14 @@ export const unifiedStateStore = reactive({
      */
     clearExpiredCache() {
         for (const [id, state] of this.questionStates.entries()) {
-            if (state.isExpired()) {
+            try {
+                // 安全检查：确保state对象存在且有isExpired方法
+                if (state && typeof state.isExpired === 'function' && state.isExpired()) {
+                    this.questionStates.delete(id);
+                }
+            } catch (error) {
+                // 如果清理过程出错，删除该条目并记录日志
+                console.warn(`清理缓存项 ${id} 时出错，删除该条目:`, error);
                 this.questionStates.delete(id);
             }
         }

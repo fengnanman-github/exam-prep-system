@@ -202,6 +202,7 @@
 import api from '../utils/api'
 import { unifiedStateStore } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
+import { QuestionState } from '../stores/unifiedState'
 
 const API_BASE = '/api/v2'
 
@@ -432,7 +433,8 @@ export default {
 
           // 更新本地状态缓存
           if (response.data.state) {
-            unifiedStateStore.questionStates.set(this.currentQuestion.id, response.data.state)
+            const state = new QuestionState(response.data.state)
+            unifiedStateStore.questionStates.set(this.currentQuestion.id, state)
           }
         } else {
           // 使用旧API

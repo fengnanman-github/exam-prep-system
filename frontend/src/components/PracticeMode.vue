@@ -336,6 +336,7 @@ class="btn btn-secondary"
 import api from '../utils/api'
 import { authStore } from '../store/auth'
 import { unifiedStateStore } from '../stores/unifiedState'
+import { QuestionState } from '../stores/unifiedState'
 import { versionConfig } from '../config/version-config'
 
 const API_BASE = '/api/v2'
@@ -712,7 +713,8 @@ try {
 
     // 更新本地状态缓存
     if (response.data && response.data.state) {
-      unifiedStateStore.questionStates.set(this.currentQuestion.id, response.data.state)
+      const state = new QuestionState(response.data.state)
+      unifiedStateStore.questionStates.set(this.currentQuestion.id, state)
     }
   } else {
     // 使用旧API

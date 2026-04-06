@@ -15,6 +15,7 @@ const { authenticateToken, requireAdmin } = require('./auth/auth-middleware');
 const publicApi = require('./public-api');
 const userManagementApi = require('./api/user-management-api');
 const dataAnalyticsApi = require('./api/data-analytics-api');
+const favoriteApi = require('./favorite-api');
 const { EnhancedSuperMemo } = require('./intelligent-review-engine');
 
 // 监控和分析
@@ -585,6 +586,9 @@ app.use('/api/v2/monitoring', monitoringApi(pool));
 // 功能扩展API路由（成就、提醒、导出）
 const extendedFeaturesApi = require('./extended-features-api');
 app.use('/api/v2', extendedFeaturesApi(pool));
+
+// 收藏功能API路由
+app.use('/api/v2/favorite', favoriteApi);
 
 // 数据扩充API路由（统计、质量检查、扩充建议）
 const dataExpansionApi = require('./data-expansion-api');
