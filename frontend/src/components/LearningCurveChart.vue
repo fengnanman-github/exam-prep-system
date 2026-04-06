@@ -1,6 +1,6 @@
 <template>
   <div class="learning-curve-chart">
-    <canvas ref="chartCanvas" v-show="chartData && chartData.length > 0"></canvas>
+    <canvas ref="chartCanvas"></canvas>
     <div v-if="!chartData || chartData.length === 0" class="empty-state">
       <p>📊 暂无学习数据</p>
       <small>开始练习后将显示学习曲线</small>
@@ -27,12 +27,10 @@ export default {
   },
   mounted() {
     console.log('[LearningCurveChart] 组件已挂载')
-    // 使用 requestAnimationFrame 确保 DOM 完全渲染
+    // 组件挂载后立即初始化
     this.$nextTick(() => {
-      requestAnimationFrame(() => {
-        console.log('[LearningCurveChart] requestAnimationFrame 后尝试初始化')
-        this.initChart()
-      })
+      console.log('[LearningCurveChart] nextTick 后尝试初始化')
+      this.initChart()
     })
   },
   watch: {
@@ -90,22 +88,12 @@ export default {
     initChart() {
       console.log('[LearningCurveChart] initChart 被调用', {
         hasCanvas: !!this.chartCanvas,
-        dataLength: this.chartData?.length || 0,
-        chartData: this.chartData
+        dataLength: this.chartData?.length || 0
       })
 
       // 检查 canvas 元素是否存在
       if (!this.chartCanvas) {
-        console.error('[LearningCurveChart] canvas 元素不存在，延迟重试')
-        // 使用更长的延迟重试
-        setTimeout(() => {
-          if (this.chartCanvas) {
-            console.log('[LearningCurveChart] 延迟重试成功')
-            this.initChart()
-          } else {
-            console.error('[LearningCurveChart] 延迟重试失败，canvas 仍然不存在')
-          }
-        }, 500)
+        console.error('[LearningCurveChart] canvas 元素不存在')
         return
       }
 
@@ -115,10 +103,9 @@ export default {
         return
       }
 
-      console.log('[LearningCurveChart] 开始初始化图表，数据:', this.chartData)
+      console.log('[LearningCurveChart] 开始初始化图表')
 
       const ctx = this.chartCanvas.getContext('2d')
-
       if (!ctx) {
         console.error('[LearningCurveChart] 无法获取 canvas context')
         return
