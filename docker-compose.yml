@@ -1,5 +1,5 @@
 services:
-  # 前端服务
+  # 前端服务 (内存优化配置 - 适配2GB环境)
   frontend:
     build: ./frontend
     ports:
@@ -8,8 +8,14 @@ services:
       - backend
     networks:
       - exam-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
 
-  # 后端服务
+  # 后端服务 (内存优化配置 - 适配2GB环境)
   backend:
     build: ./backend
     ports:
@@ -21,13 +27,20 @@ services:
       - DB_USER=exam_user
       - DB_PASSWORD=exam_pass123
       - REDIS_HOST=redis
+      - NODE_ENV=production
     depends_on:
       - db
       - redis
     networks:
       - exam-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
-  # 数据库
+  # 数据库 (内存优化配置 - 适配2GB环境)
   db:
     image: postgres:13
     environment:
@@ -39,16 +52,39 @@ services:
       - "15432:5432"
     volumes:
       - exam-prep-system_db_data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c work_mem=16MB
+      -c maintenance_work_mem=64MB
+      -c effective_cache_size=512MB
+      -c max_connections=50
+      -c checkpoint_completion_target=0.7
+      -c wal_buffers=16MB
+      -c random_page_cost=1.1
     networks:
       - exam-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
-  # Redis缓存
+  # Redis缓存 (内存优化配置 - 适配2GB环境)
   redis:
     image: redis:6-alpine
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10
     ports:
       - "16379:6379"
     networks:
       - exam-network
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 64M
 
 volumes:
   exam-prep-system_db_data:
