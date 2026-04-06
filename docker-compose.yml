@@ -28,6 +28,9 @@ services:
       - DB_PASSWORD=exam_pass123
       - REDIS_HOST=redis
       - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-exam-prep-jwt-secret-2026-change-in-production}
+      - JWT_EXPIRES_IN=1h
+      - JWT_REFRESH_EXPIRES_IN=7d
     depends_on:
       - db
       - redis

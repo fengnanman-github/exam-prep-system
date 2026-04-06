@@ -364,3 +364,6 @@ if (typeof window !== 'undefined') {
         console.error('初始化统一状态Store失败:', err);
     });
 }
+
+// 导出QuestionState类供其他组件使用
+export { QuestionState };
