@@ -62,7 +62,8 @@
       "Bash(sed -i '/userId: {$/,/^\t$/d' PracticeMode.vue)",
       "Bash(sed -i '/props: {$/,/^}$/d' PracticeMode.vue)",
       "Bash(mv:*)",
-      "Bash(/tmp/fix-back-buttons.sh)"
+      "Bash(/tmp/fix-back-buttons.sh)",
+      "Bash(jq .daily_efficiency[0])"
     ]
   },
   "outputStyle": "Explanatory",

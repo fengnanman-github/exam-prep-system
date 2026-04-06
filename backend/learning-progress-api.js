@@ -465,5 +465,194 @@ module.exports = (pool) => {
     }
   });
 
+  /**
+   * GET /api/v2/progress/efficiency/:userId
+   * 获取用户学习效率分析
+   */
+  router.get('/efficiency/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { days = 30 } = req.query;
+
+      // 简化版每日效率统计 - 避免复杂的类型转换
+      const dailyEfficiencyQuery = `
+        SELECT
+          DATE(practiced_at) as date,
+          COUNT(*) as total_questions,
+          COUNT(CASE WHEN is_correct THEN 1 END) as correct_count,
+          ROUND(100.0 * COUNT(CASE WHEN is_correct THEN 1 END) / NULLIF(COUNT(*), 0), 2) as accuracy_rate,
+          COUNT(DISTINCT question_id) as unique_questions
+        FROM practice_history
+        WHERE user_id = $1
+          AND practiced_at >= CURRENT_DATE - INTERVAL '${days} days'
+        GROUP BY DATE(practiced_at)
+        ORDER BY date DESC
+      `;
+
+      const dailyEfficiencyResult = await pool.query(dailyEfficiencyQuery, [userId]);
+
+      // 计算questions_per_hour（在应用层）
+      const dailyEfficiencyWithRate = dailyEfficiencyResult.rows.map(row => {
+        return {
+          ...row,
+          questions_per_hour: row.total_questions > 0 ? Math.round(row.total_questions / 1) : 0 // 假设每日1小时练习
+        };
+      });
+
+      // 简化版最佳学习时间段
+      const optimalTimeQuery = `
+        SELECT
+          EXTRACT(HOUR FROM practiced_at) as hour,
+          COUNT(*) as total_questions,
+          COUNT(CASE WHEN is_correct THEN 1 END) as correct_count,
+          ROUND(100.0 * COUNT(CASE WHEN is_correct THEN 1 END) / NULLIF(COUNT(*), 0), 2) as accuracy_rate
+        FROM practice_history
+        WHERE user_id = $1
+          AND practiced_at >= CURRENT_DATE - INTERVAL '${days} days'
+        GROUP BY EXTRACT(HOUR FROM practiced_at)
+        HAVING COUNT(*) >= 5
+        ORDER BY total_questions DESC
+        LIMIT 3
+      `;
+
+      const optimalTimeResult = await pool.query(optimalTimeQuery, [userId]);
+
+      // 简化版效率等级
+      const efficiencyGradeQuery = `
+        SELECT
+          COUNT(DISTINCT question_id) as total_questions,
+          ROUND(100.0 * COUNT(CASE WHEN is_correct THEN 1 END) / NULLIF(COUNT(*), 0), 2) as accuracy_rate
+        FROM practice_history
+        WHERE user_id = $1
+          AND practiced_at >= CURRENT_DATE - INTERVAL '${days} days'
+      `;
+
+      const efficiencyGradeResult = await pool.query(efficiencyGradeQuery, [userId]);
+      const stats = efficiencyGradeResult.rows[0] || {};
+
+      // 计算效率等级
+      let efficiencyGrade = 'needs_improvement';
+      if (stats.accuracy_rate >= 85 && stats.total_questions >= 100) {
+        efficiencyGrade = 'excellent';
+      } else if (stats.accuracy_rate >= 75 && stats.total_questions >= 50) {
+        efficiencyGrade = 'good';
+      } else if (stats.accuracy_rate >= 65 && stats.total_questions >= 20) {
+        efficiencyGrade = 'average';
+      }
+
+      res.json({
+        daily_efficiency: dailyEfficiencyWithRate,
+        peak_performance_times: optimalTimeResult.rows,
+        overall_efficiency: {
+          ...stats,
+          efficiency_grade: efficiencyGrade,
+          questions_per_hour: stats.total_questions > 0 ? Math.round(stats.total_questions / Math.max(dailyEfficiencyResult.rows.length, 1)) : 0
+        },
+        summary: {
+          total_days: dailyEfficiencyResult.rows.length,
+          avg_questions_per_day: dailyEfficiencyResult.rows.length > 0
+            ? Math.round(dailyEfficiencyResult.rows.reduce((sum, day) => sum + day.total_questions, 0) / dailyEfficiencyResult.rows.length)
+            : 0,
+          best_performance_time: optimalTimeResult.rows.length > 0
+            ? `${optimalTimeResult.rows[0].hour}:00`
+            : null
+        }
+      });
+
+    } catch (error) {
+      console.error('[EfficiencyAPI] 获取学习效率失败:', error);
+      res.status(500).json({ error: '获取学习效率失败', details: error.message });
+    }
+  });
+
+  /**
+   * GET /api/v2/progress/predictions/:userId
+   * 获取学习预测和建议
+   */
+  router.get('/predictions/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      // 1. 预测达到熟练度所需时间
+      const masteryPredictionQuery = `
+        WITH current_stats AS (
+          SELECT
+            COUNT(DISTINCT question_id) as mastered_questions,
+            AVG(CASE WHEN is_correct THEN 1.0 ELSE 0.0 END) as current_accuracy,
+            COUNT(*) as total_practices
+          FROM practice_history
+          WHERE user_id = $1
+        ),
+        learning_rate AS (
+          SELECT
+            DATE(practiced_at) as practice_date,
+            COUNT(DISTINCT question_id) as new_questions
+          FROM practice_history
+          WHERE user_id = $1
+          GROUP BY DATE(practiced_at)
+          ORDER BY practice_date DESC
+          LIMIT 7
+        )
+        SELECT
+          cs.mastered_questions,
+          cs.current_accuracy,
+          ROUND(AVG(lr.new_questions), 2) as avg_daily_new_questions,
+          CASE
+            WHEN cs.mastered_questions >= 5000 THEN 'mastery_achieved'
+            WHEN AVG(lr.new_questions) > 0 THEN
+              CEIL((5000 - cs.mastered_questions)::numeric / NULLIF(AVG(lr.new_questions), 0))
+            ELSE NULL
+          END as estimated_days_to_mastery
+        FROM current_stats cs, learning_rate lr
+      `;
+
+      const masteryPredictionResult = await pool.query(masteryPredictionQuery, [userId]);
+
+      // 2. 识别需要加强的薄弱知识点
+      const weakAreasQuery = `
+        WITH category_performance AS (
+          SELECT
+            q.exam_category,
+            COUNT(*) as total_attempts,
+            COUNT(CASE WHEN ph.is_correct THEN 1 END) as correct_count,
+            ROUND(100.0 * COUNT(CASE WHEN ph.is_correct THEN 1 END) / COUNT(*), 2) as accuracy_rate,
+            COUNT(DISTINCT ph.question_id) as questions_practiced
+          FROM practice_history ph
+          JOIN questions q ON ph.question_id = q.id
+          WHERE ph.user_id = $1
+          GROUP BY q.exam_category
+          HAVING COUNT(*) >= 5
+        )
+        SELECT
+          exam_category,
+          total_attempts,
+          correct_count,
+          accuracy_rate,
+          questions_practiced
+        FROM category_performance
+        WHERE accuracy_rate < 75
+        ORDER BY accuracy_rate ASC
+        LIMIT 5
+      `;
+
+      const weakAreasResult = await pool.query(weakAreasQuery, [userId]);
+
+      res.json({
+        mastery_prediction: masteryPredictionResult.rows[0] || {},
+        weak_areas: weakAreasResult.rows,
+        smart_suggestions: {
+          focus_on_weak_areas: weakAreasResult.rows.length > 0,
+          recommended_study_duration: 45,
+          optimal_practice_time: "14:00-16:00",
+          reminder_strategy: "short_frequent_sessions"
+        }
+      });
+
+    } catch (error) {
+      console.error('[PredictionsAPI] 获取预测失败:', error);
+      res.status(500).json({ error: '获取预测失败' });
+    }
+  });
+
   return router;
 };
