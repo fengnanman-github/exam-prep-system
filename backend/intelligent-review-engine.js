@@ -38,44 +38,71 @@ const MASTERY_LEVELS = {
  */
 class EnhancedSuperMemo {
   /**
-   * 计算质量评分
+   * 计算质量评分 (增强版 - 考虑题目难度和个人表现)
    * @param {boolean} isCorrect - 是否正确
    * @param {number} timeSpent - 答题用时（秒）
    * @param {number} averageTime - 平均用时（秒）
    * @param {boolean} isUncertain - 是否标记不确定
+   * @param {string} questionDifficulty - 题目难度 ('easy', 'medium', 'hard')
+   * @param {object} userHistoricalPerformance - 用户历史表现 { accuracy: number, recent_performance: number }
    * @returns {number} 质量评分（0-5）
    */
-  static calculateQuality(isCorrect, timeSpent, averageTime = 30, isUncertain = false) {
+  static calculateQuality(isCorrect, timeSpent, averageTime = 30, isUncertain = false, questionDifficulty = 'medium', userHistoricalPerformance = null) {
+    let quality;
+
     if (!isCorrect) {
       // 错误答案：根据是否有印象给出0或1分
       // 如果答题时间短，说明完全不知道（0分）
       // 如果答题时间长，说明有印象但不确定（1分）
-      return timeSpent < averageTime * 0.3 ? QUALITY_LEVELS.COMPLETE_FORGOT : QUALITY_LEVELS.INCORRECT_BUT_FAMILIAR;
-    }
-
-    // 正确答案：根据用时和是否不确定给分
-    const timeRatio = timeSpent / averageTime;
-
-    if (isUncertain) {
-      // 标记不确定，最高3分
-      if (timeRatio > 2) return QUALITY_LEVELS.DIFFICULT_RECALL;
-      return QUALITY_LEVELS.CORRECT_WITH_EFFORT;
-    }
-
-    // 未标记不确定
-    if (timeRatio > 2) {
-      // 用时很长，说明困难回忆
-      return QUALITY_LEVELS.DIFFICULT_RECALL;
-    } else if (timeRatio > 1.2) {
-      // 用时略长，正确但需要思考
-      return QUALITY_LEVELS.CORRECT_WITH_EFFORT;
-    } else if (timeRatio > 0.7) {
-      // 用时正常，略有犹豫
-      return QUALITY_LEVELS.CORRECT_WITH_HESITATION;
+      quality = timeSpent < averageTime * 0.3 ? QUALITY_LEVELS.COMPLETE_FORGOT : QUALITY_LEVELS.INCORRECT_BUT_FAMILIAR;
     } else {
-      // 用时很短，完美记忆
-      return QUALITY_LEVELS.PERFECT_RECALL;
+      // 正确答案：根据用时和是否不确定给分
+      const timeRatio = timeSpent / averageTime;
+
+      if (isUncertain) {
+        // 标记不确定，最高3分
+        if (timeRatio > 2) quality = QUALITY_LEVELS.DIFFICULT_RECALL;
+        else quality = QUALITY_LEVELS.CORRECT_WITH_EFFORT;
+      } else {
+        // 未标记不确定
+        if (timeRatio > 2) {
+          quality = QUALITY_LEVELS.DIFFICULT_RECALL;
+        } else if (timeRatio > 1.2) {
+          quality = QUALITY_LEVELS.CORRECT_WITH_EFFORT;
+        } else if (timeRatio > 0.7) {
+          quality = QUALITY_LEVELS.CORRECT_WITH_HESITATION;
+        } else {
+          quality = QUALITY_LEVELS.PERFECT_RECALL;
+        }
+      }
+
+      // 难度调整：困难题目答对，额外加分
+      if (questionDifficulty === 'hard' && quality < 5) {
+        quality = Math.min(5, quality + 0.5);
+      } else if (questionDifficulty === 'easy' && quality > 3) {
+        // 简单题目答对但不完美，略降分
+        quality = Math.max(3, quality - 0.2);
+      }
+
+      // 个人表现调整：弱势题目答对，额外加分
+      if (userHistoricalPerformance) {
+        const userAccuracy = userHistoricalPerformance.accuracy || 0.8;
+        const recentPerformance = userHistoricalPerformance.recent_performance || 0.8;
+
+        // 如果用户整体准确率较低，这次答对了，额外奖励
+        if (userAccuracy < 0.6 && quality >= 3) {
+          quality = Math.min(5, quality + 0.3);
+        }
+
+        // 如果最近表现不好，这次答对了，额外奖励
+        if (recentPerformance < 0.7 && quality >= 4) {
+          quality = Math.min(5, quality + 0.2);
+        }
+      }
     }
+
+    // 确保返回整数（保持向后兼容）
+    return Math.round(quality);
   }
 
   /**

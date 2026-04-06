@@ -590,6 +590,10 @@ app.use('/api/v2', extendedFeaturesApi(pool));
 // 收藏功能API路由
 app.use('/api/v2/favorite', favoriteApi);
 
+// 学习效率分析API路由
+const learningEfficiencyApi = require('./learning-efficiency-api');
+app.use('/api/v2/progress', learningEfficiencyApi(pool));
+
 // 数据扩充API路由（统计、质量检查、扩充建议）
 const dataExpansionApi = require('./data-expansion-api');
 app.use('/api/v2/data', dataExpansionApi(pool));
